@@ -14,7 +14,16 @@ Widget buildAppBar(BuildContext context, GlobalKey<ScaffoldState> scaffoldKey) {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
+          // icon: Image.asset(
+          //   'assets/images/hamburger logo.png',
+          //   height: 28,
+          //   width: 28,
+          //   errorBuilder: (context, error, stackTrace) {
+          //     return const Icon(Icons.menu, color: Colors.white, size: 28);
+          //   },
+          // ),
           icon: const Icon(Icons.menu, color: Colors.white, size: 28),
+
           onPressed: () {
             // Use the scaffoldKey passed into this widget to open the drawer.
             // This avoids relying on Scaffold.of(context), which fails when

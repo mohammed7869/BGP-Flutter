@@ -6,6 +6,7 @@ import 'package:burhaniguardsapp/ui/screens/admin/enrolledMembersListScreen.dart
 import 'package:burhaniguardsapp/ui/screens/admin/membersListScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBar.dart';
+import 'package:burhaniguardsapp/ui/widgets/adminAppDrawer.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,6 +27,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       key: scaffoldKey,
+      drawer: const AdminAppDrawer(),
       body: SafeArea(
         child: Column(
           children: [

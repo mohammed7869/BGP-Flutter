@@ -2,10 +2,10 @@ import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
+import 'package:burhaniguardsapp/ui/widgets/baawan_erp_dialog.dart';
 import 'package:burhaniguardsapp/ui/widgets/shaped_background.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:burhaniguardsapp/core/models/auth_models.dart';
 
 class UnifiedLoginScreen extends StatefulWidget {
   const UnifiedLoginScreen({Key? key}) : super(key: key);
@@ -49,13 +49,13 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
               ),
             );
 
-            // TODO: Navigate to appropriate dashboard based on role
-            // For now, navigate to admin dashboard
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const AdminDashboardScreen()),
-            );
+            // Show Baawan ERP popup if user has new_password_hash set, then navigate
+            if (response.hasNewPasswordHash) {
+              _showBaawanErpDialogAndNavigate();
+            } else {
+              // Navigate immediately if no popup needed
+              _navigateToDashboard();
+            }
           }
         }
       } catch (e) {
@@ -303,6 +303,47 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
           },
         );
       },
+    );
+  }
+
+  void _showBaawanErpDialogAndNavigate() {
+    if (mounted) {
+      bool websiteVisited = false;
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext dialogContext) {
+          return BaawanErpDialog(
+            onWebsiteVisited: () {
+              websiteVisited = true;
+            },
+          );
+        },
+      ).then((_) async {
+        // Navigate to dashboard after dialog is dismissed
+        // Add a delay to allow browser to open if website was visited
+        if (mounted) {
+          if (websiteVisited) {
+            // Give browser time to open before navigating
+            await Future.delayed(const Duration(milliseconds: 1000));
+          } else {
+            // Small delay even when just closing to ensure smooth transition
+            await Future.delayed(const Duration(milliseconds: 300));
+          }
+          if (mounted) {
+            _navigateToDashboard();
+          }
+        }
+      });
+    }
+  }
+
+  void _navigateToDashboard() {
+    // TODO: Navigate to appropriate dashboard based on role
+    // For now, navigate to admin dashboard
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
     );
   }
 }

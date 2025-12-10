@@ -1,15 +1,18 @@
 class LoginRequest {
   final String itsNumber;
+  final String email;
   final String password;
 
   LoginRequest({
     required this.itsNumber,
+    this.email = 'string',
     required this.password,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'itsNumber': itsNumber,
+      'email': email,
       'password': password,
     };
   }
@@ -33,7 +36,9 @@ class AuthResponse {
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
     return AuthResponse(
       email: json['email'] as String? ?? json['Email'] as String? ?? '',
-      displayName: json['displayName'] as String? ?? json['DisplayName'] as String? ?? '',
+      displayName: json['displayName'] as String? ??
+          json['DisplayName'] as String? ??
+          '',
       role: json['role'] as String? ?? json['Role'] as String? ?? '',
       token: json['token'] as String? ?? json['Token'] as String? ?? '',
       requiresPasswordChange: json['requiresPasswordChange'] as bool? ?? false,
@@ -78,6 +83,7 @@ class UserAuthResponse {
   final String role;
   final String token;
   final bool requiresPasswordChange;
+  final bool hasNewPasswordHash;
 
   UserAuthResponse({
     required this.id,
@@ -95,6 +101,7 @@ class UserAuthResponse {
     required this.role,
     required this.token,
     this.requiresPasswordChange = false,
+    this.hasNewPasswordHash = false,
   });
 
   factory UserAuthResponse.fromJson(Map<String, dynamic> json) {
@@ -102,7 +109,8 @@ class UserAuthResponse {
       id: json['id'] as int? ?? 0,
       profile: json['profile'] as String?,
       itsId: json['itsId'] as String? ?? json['its_id'] as String?,
-      fullName: json['fullName'] as String? ?? json['FullName'] as String? ?? '',
+      fullName:
+          json['fullName'] as String? ?? json['FullName'] as String? ?? '',
       email: json['email'] as String? ?? json['Email'] as String? ?? '',
       rank: json['rank'] as String? ?? json['Rank'] as String? ?? '',
       roles: json['roles'] as int? ?? json['Roles'] as int?,
@@ -113,7 +121,12 @@ class UserAuthResponse {
       contact: json['contact'] as String? ?? json['Contact'] as String?,
       role: json['role'] as String? ?? json['Role'] as String? ?? '',
       token: json['token'] as String? ?? json['Token'] as String? ?? '',
-      requiresPasswordChange: json['requiresPasswordChange'] as bool? ?? json['RequiresPasswordChange'] as bool? ?? false,
+      requiresPasswordChange: json['requiresPasswordChange'] as bool? ??
+          json['RequiresPasswordChange'] as bool? ??
+          false,
+      hasNewPasswordHash: json['hasNewPasswordHash'] as bool? ??
+          json['HasNewPasswordHash'] as bool? ??
+          false,
     );
   }
 
@@ -204,4 +217,3 @@ class UserData {
     );
   }
 }
-
