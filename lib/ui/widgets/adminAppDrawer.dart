@@ -1,7 +1,7 @@
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
-import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
-import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
+// import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
+// import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
@@ -51,7 +51,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                 children: [
                   // Hamburger Logo
                   Image.asset(
-                    'assets/images/hamburger logo.png',
+                    'assets/images/burhaniguards_logo.png',
                     height: 113,
                     errorBuilder: (context, error, stackTrace) {
                       return Image.asset(
@@ -117,32 +117,32 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                         );
                       },
                     ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.calendar_today,
-                      title: 'Miqaats',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const MiqaatScreen()),
-                        );
-                      },
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.bar_chart,
-                      title: 'Attendance',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const AttendanceMiqaatScreen()),
-                        );
-                      },
-                    ),
+                    // _buildMenuItem(
+                    //   context,
+                    //   icon: Icons.calendar_today,
+                    //   title: 'Miqaats',
+                    //   onTap: () {
+                    //     Navigator.pop(context);
+                    //     Navigator.pushReplacement(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //           builder: (_) => const MiqaatScreen()),
+                    //     );
+                    //   },
+                    // ),
+                    // _buildMenuItem(
+                    //   context,
+                    //   icon: Icons.bar_chart,
+                    //   title: 'Attendance',
+                    //   onTap: () {
+                    //     Navigator.pop(context);
+                    //     Navigator.pushReplacement(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //           builder: (_) => const AttendanceMiqaatScreen()),
+                    //     );
+                    //   },
+                    // ),
                     _buildMenuItem(
                       context,
                       icon: Icons.person,
@@ -169,19 +169,19 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                         );
                       },
                     ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.bookmark,
-                      title: 'Saved Events',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const EnrolledMiqaatScreen()),
-                        );
-                      },
-                    ),
+                    // _buildMenuItem(
+                    //   context,
+                    //   icon: Icons.bookmark,
+                    //   title: 'Saved Events',
+                    //   onTap: () {
+                    //     Navigator.pop(context);
+                    //     Navigator.pushReplacement(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //           builder: (_) => const EnrolledMiqaatScreen()),
+                    //     );
+                    //   },
+                    // ),
                   ],
                 ),
               ),

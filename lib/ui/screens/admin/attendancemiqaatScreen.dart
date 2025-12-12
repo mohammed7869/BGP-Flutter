@@ -1,48 +1,52 @@
 import 'package:burhaniguardsapp/ui/widgets/adminAppBarforPages.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
+import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:flutter/material.dart';
 
 class AttendanceMiqaatScreen extends StatefulWidget {
-  const AttendanceMiqaatScreen({Key? key}) : super(key: key);
+  final String? initialFilter;
+
+  const AttendanceMiqaatScreen({Key? key, this.initialFilter})
+      : super(key: key);
 
   @override
   State<AttendanceMiqaatScreen> createState() => _AttendanceMiqaatScreenState();
 }
 
 class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
-  int _selectedIndex = 0;
-  String selectedFilter = 'Miqaats';
+  late String selectedFilter;
 
-  final List<Map<String, dynamic>> miqaats = [
-    {
-      'date': '1ST MAY- SAT -2:00 PM',
-      'title': 'Urs Mubarak',
-      'subtitle': 'Ayyam',
-      'location': 'Mumbai, Santa Cruz',
-      'approved': 50,
-    },
-    {
-      'date': '1ST MAY- SAT -2:00 PM',
-      'title': 'Urs Mubarak',
-      'subtitle': 'Ayyam',
-      'location': 'Mumbai, Santa Cruz',
-      'approved': 50,
-    },
-    {
-      'date': '1ST MAY- SAT -2:00 PM',
-      'title': 'Urs Mubarak',
-      'subtitle': 'Ayyam',
-      'location': 'Mumbai, Santa Cruz',
-      'approved': 50,
-    },
-    {
-      'date': '1ST MAY- SAT -2:00 PM',
-      'title': 'Urs Mubarak',
-      'subtitle': 'Ayyam',
-      'location': 'Mumbai, Santa Cruz',
-      'approved': 50,
-    },
-  ];
+  final MiqaatService _miqaatService = MiqaatService();
+  List<Miqaat> _miqaats = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedFilter = widget.initialFilter ?? 'Miqaats';
+    _loadMiqaats();
+  }
+
+  Future<void> _loadMiqaats() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final miqaats = await _miqaatService.getAllMiqaats();
+      setState(() {
+        _miqaats = miqaats;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
 
   final List<Map<String, dynamic>> attendanceHistory = [
     {
@@ -133,13 +137,53 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
 
                   if (selectedFilter == 'Miqaats') ...[
                     Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: miqaats.length,
-                        itemBuilder: (context, index) {
-                          return _buildMiqaatCard(miqaats[index]);
-                        },
-                      ),
+                      child: _isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(),
+                            )
+                          : _errorMessage != null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _errorMessage!,
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 14,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: _loadMiqaats,
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _miqaats.isEmpty
+                                  ? const Center(
+                                      child: Text(
+                                        'No miqaats found',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    )
+                                  : RefreshIndicator(
+                                      onRefresh: _loadMiqaats,
+                                      child: ListView.builder(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20),
+                                        itemCount: _miqaats.length,
+                                        itemBuilder: (context, index) {
+                                          return _buildMiqaatCard(
+                                              _miqaats[index]);
+                                        },
+                                      ),
+                                    ),
                     ),
                   ],
 
@@ -202,7 +246,52 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     );
   }
 
-  Widget _buildMiqaatCard(Map<String, dynamic> miqaat) {
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final day = date.day.toString().padLeft(2, '0');
+    final month = months[date.month - 1];
+    final year = date.year;
+    return '$day $month $year';
+  }
+
+  Widget _buildMiqaatCard(Miqaat miqaat) {
+    // Format date for display
+    final fromDateStr = _formatDate(miqaat.fromDate);
+    final tillDateStr = _formatDate(miqaat.tillDate);
+    final dateDisplay = fromDateStr == tillDateStr
+        ? fromDateStr
+        : '$fromDateStr - $tillDateStr';
+
+    // Get approval status color
+    Color statusColor;
+    String statusText;
+    switch (miqaat.adminApproval.toLowerCase()) {
+      case 'approved':
+        statusColor = Colors.green;
+        statusText = 'Approved';
+        break;
+      case 'rejected':
+        statusColor = Colors.red;
+        statusText = 'Rejected';
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusText = 'Pending';
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -221,7 +310,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
               children: [
                 // Date
                 Text(
-                  miqaat['date'],
+                  dateDisplay,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
@@ -231,24 +320,15 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                 const SizedBox(height: 8),
                 // Title
                 Text(
-                  miqaat['title'],
+                  miqaat.miqaatName,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
-                // Subtitle
-                Text(
-                  miqaat['subtitle'],
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Location
+                const SizedBox(height: 4),
+                // Location (Jamaat)
                 Row(
                   children: [
                     const Icon(
@@ -257,43 +337,60 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                       color: Colors.orange,
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      miqaat['location'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+                    Expanded(
+                      child: Text(
+                        miqaat.jamaat,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 4),
+                // Jamiyat
+                Text(
+                  miqaat.jamiyat,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Right side - Approved badge
+          // Right side - Status badge
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Colors.orange,
+            decoration: BoxDecoration(
+              color: statusColor,
               shape: BoxShape.circle,
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  miqaat['approved'].toString(),
+                  miqaat.volunteerLimit.toString(),
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                const Text(
-                  'Approved',
-                  style: TextStyle(
+                const SizedBox(height: 2),
+                Text(
+                  statusText,
+                  style: const TextStyle(
                     fontSize: 10,
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),

@@ -18,10 +18,15 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
   bool _isCaptain = false;
   DateTime? _fromDate;
   DateTime? _tillDate;
+  bool _isLoadingData = false;
+
+  // Jamiyat and Jamaat data
+  List<JamiyatItem> _jamiyats = [];
+  List<JamaatItem> _jamaats = [];
+  String? _selectedJamiyat;
+  String? _selectedJamaat;
 
   final TextEditingController _miqaatNameController = TextEditingController();
-  final TextEditingController _jamaatController = TextEditingController();
-  final TextEditingController _jamiaatController = TextEditingController();
   final TextEditingController _fromDateController = TextEditingController();
   final TextEditingController _tillDateController = TextEditingController();
   final TextEditingController _volunteerLimitController =
@@ -36,10 +41,49 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
 
   Future<void> _checkUserRole() async {
     final userData = await _authService.getStoredUser();
+    final isCaptain =
+        userData?.roles == 2 || userData?.rank.toLowerCase() == 'captain';
     setState(() {
-      _isCaptain =
-          userData?.roles == 2 || userData?.rank.toLowerCase() == 'captain';
+      _isCaptain = isCaptain;
     });
+
+    // If user is captain, fetch jamiyat and jamaat data
+    if (isCaptain) {
+      await _fetchJamiyatJamaatData();
+    }
+  }
+
+  Future<void> _fetchJamiyatJamaatData() async {
+    setState(() {
+      _isLoadingData = true;
+    });
+
+    try {
+      final response = await _miqaatService.getJamiyatJamaatWithCounts();
+      if (response != null && mounted) {
+        setState(() {
+          _jamiyats = response.jamiyats;
+          _jamaats = response.jamaats;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Failed to load jamiyat/jamaat data: ${e.toString().replaceFirst('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingData = false;
+        });
+      }
+    }
   }
 
   @override
@@ -72,9 +116,9 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
             children: [
               _buildTextField('Miqaat Name', _miqaatNameController),
               const SizedBox(height: 16),
-              _buildTextField('Jamaat', _jamaatController),
+              _buildJamaatDropdown(),
               const SizedBox(height: 16),
-              _buildTextField('jamiaat', _jamiaatController),
+              _buildJamiyatDropdown(),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -244,12 +288,20 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
             fontSize: 14,
           ),
           onTap: () async {
+            // Set minimum date to today to prevent backdated selections
+            final today = DateTime.now();
+            final minDate = label == 'From'
+                ? today
+                : (_fromDate != null && _fromDate!.isAfter(today))
+                    ? _fromDate!
+                    : today;
+
             DateTime? pickedDate = await showDatePicker(
               context: context,
               initialDate: label == 'From'
-                  ? (_fromDate ?? DateTime.now())
-                  : (_tillDate ?? DateTime.now()),
-              firstDate: DateTime(2020),
+                  ? (_fromDate ?? today)
+                  : (_tillDate ?? (_fromDate ?? today)),
+              firstDate: minDate,
               lastDate: DateTime(2030),
             );
             if (pickedDate != null) {
@@ -452,10 +504,20 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
         throw Exception('Invalid volunteer limit');
       }
 
+      if (_selectedJamaat == null || _selectedJamiyat == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select both Jamaat and Jamiyat'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       await _miqaatService.createMiqaat(
         miqaatName: _miqaatNameController.text.trim(),
-        jamaat: _jamaatController.text.trim(),
-        jamiyat: _jamiaatController.text.trim(),
+        jamaat: _selectedJamaat!,
+        jamiyat: _selectedJamiyat!,
         fromDate: _fromDate!,
         tillDate: _tillDate!,
         volunteerLimit: volunteerLimit,
@@ -497,11 +559,133 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
     }
   }
 
+  Widget _buildJamiyatDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedJamiyat,
+          decoration: InputDecoration(
+            filled: true,
+            label: const Text('Jamiyat'),
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          ),
+          style: const TextStyle(
+            color: Colors.orange,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+          hint: _isLoadingData
+              ? const Text('Loading...')
+              : const Text('Select Jamiyat'),
+          items: _jamiyats.map((jamiyat) {
+            return DropdownMenuItem<String>(
+              value: jamiyat.name,
+              child: Text(jamiyat.displayName),
+            );
+          }).toList(),
+          onChanged: _isLoadingData
+              ? null
+              : (String? value) {
+                  setState(() {
+                    _selectedJamiyat = value;
+                  });
+                },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'This field is required';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJamaatDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedJamaat,
+          decoration: InputDecoration(
+            filled: true,
+            label: const Text('Jamaat'),
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          ),
+          style: const TextStyle(
+            color: Colors.orange,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+          hint: _isLoadingData
+              ? const Text('Loading...')
+              : const Text('Select Jamaat'),
+          items: _jamaats.map((jamaat) {
+            return DropdownMenuItem<String>(
+              value: jamaat.name,
+              child: Text(jamaat.displayName),
+            );
+          }).toList(),
+          onChanged: _isLoadingData
+              ? null
+              : (String? value) {
+                  setState(() {
+                    _selectedJamaat = value;
+                  });
+                },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'This field is required';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
     _miqaatNameController.dispose();
-    _jamaatController.dispose();
-    _jamiaatController.dispose();
     _fromDateController.dispose();
     _tillDateController.dispose();
     _volunteerLimitController.dispose();

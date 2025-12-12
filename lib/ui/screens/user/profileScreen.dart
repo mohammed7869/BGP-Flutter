@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/models/auth_models.dart';
+import 'package:burhaniguardsapp/core/constants/api_constants.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({Key? key}) : super(key: key);
@@ -116,8 +117,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+  String _getProfileImageUrl(String? profilePath) {
+    if (profilePath == null || profilePath.isEmpty) {
+      return '';
+    }
+    // If the profile path already contains http/https, return as is
+    if (profilePath.startsWith('http://') ||
+        profilePath.startsWith('https://')) {
+      return profilePath;
+    }
+    // Otherwise, prepend the base URL
+    final baseUrl = ApiConstants.baseUrl;
+    // Remove leading slash from profile path if present
+    final cleanPath =
+        profilePath.startsWith('/') ? profilePath.substring(1) : profilePath;
+    return '$baseUrl/$cleanPath';
+  }
+
   Widget _buildProfileImage() {
     if (_userData?.profile != null && _userData!.profile!.isNotEmpty) {
+      final imageUrl = _getProfileImageUrl(_userData!.profile);
       return Container(
         width: 100,
         height: 100,
@@ -134,9 +153,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
         child: ClipOval(
           child: Image.network(
-            _userData!.profile!,
+            imageUrl,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              );
+            },
           ),
         ),
       );

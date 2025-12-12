@@ -1,8 +1,8 @@
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
-import 'package:burhaniguardsapp/ui/screens/admin/addUserScreen.dart';
+import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
+import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/createMiqaatScreen.dart';
-import 'package:burhaniguardsapp/ui/screens/admin/enrolledMembersListScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/membersListScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBar.dart';
@@ -20,7 +20,49 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-  int _selectedIndex = 0;
+  final MiqaatService _miqaatService = MiqaatService();
+  final LocalStorageService _localStorage = LocalStorageService();
+  List<Miqaat> _memberMiqaats = [];
+  bool _isLoadingMiqaats = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMemberMiqaats();
+  }
+
+  Future<void> _loadMemberMiqaats() async {
+    setState(() {
+      _isLoadingMiqaats = true;
+    });
+
+    try {
+      final userData = await _localStorage.getUserData();
+      if (userData != null && userData.id > 0) {
+        final miqaats = await _miqaatService.getMemberMiqaats(userData.id);
+        setState(() {
+          _memberMiqaats = miqaats;
+          _isLoadingMiqaats = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingMiqaats = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingMiqaats = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load miqaats: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +96,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildShortcuts() {
-    void onShortCutTap(int route) {
+    Future<void> onShortCutTap(int route) async {
       if (route == 1) {
         Navigator.push(
           context,
@@ -73,6 +115,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               builder: (context) => const AttendanceMiqaatScreen()),
         );
       } else if (route == 4) {
+        // Check if user is Captain before allowing access to Create Miqaat
+        final userData = await _localStorage.getUserData();
+        final isCaptain = userData?.roles == 2;
+
+        if (!isCaptain) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Only Captain can create Miqaat'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CreateMiqaatScreen()),
@@ -112,7 +170,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   () => onShortCutTap(3)),
               // _buildShortcutItem(
               //     Icons.history, 'Attendance History', onShortCutTap),
-              _buildShortcutItem(Icons.add_circle_outline, 'Create\nMiqaats',
+              _buildShortcutItem(Icons.add_circle_outline, 'Create Miqaat',
                   () => onShortCutTap(4)),
             ],
           ),
@@ -199,23 +257,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildMiqaatCard(
-            title: 'Eid E Milood Un Nabi',
-            dateRange: 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
-            location: 'Mumbai, Santa Cruz',
-          ),
-          const SizedBox(height: 12),
-          _buildMiqaatCard(
-            title: 'Eid E Milood Un Nabi',
-            dateRange: 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
-            location: 'Mumbai, Santa Cruz',
-          ),
+          if (_isLoadingMiqaats)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_memberMiqaats.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Center(
+                child: Text(
+                  'No pending miqaats found',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF666666),
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._memberMiqaats.map((miqaat) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildMiqaatCard(
+                    miqaat: miqaat,
+                    title: miqaat.miqaatName,
+                    dateRange:
+                        'FROM ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)}',
+                    location: '${miqaat.jamaat}, ${miqaat.jamiyat}',
+                  ),
+                )),
         ],
       ),
     );
   }
 
+  String _formatDate(DateTime date) {
+    final months = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC'
+    ];
+    final day = date.day;
+    final month = months[date.month - 1];
+    final year = date.year;
+    return '$day $month $year';
+  }
+
   Widget _buildMiqaatCard({
+    required Miqaat miqaat,
     required String title,
     required String dateRange,
     required String location,
@@ -318,14 +418,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             child: InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const MembersListScreen()),
-                  );
+                  _showMiqaatActionDialog(miqaat);
                 },
                 child: Text(
-                  'Check Members List',
+                  'View Details',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -337,5 +433,114 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showMiqaatActionDialog(Miqaat miqaat) async {
+    final userData = await _localStorage.getUserData();
+    final isCaptain = userData?.roles == 2;
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(miqaat.miqaatName),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Location: ${miqaat.jamaat}, ${miqaat.jamiyat}',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Date: ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)}',
+                style: const TextStyle(fontSize: 14),
+              ),
+              if (miqaat.aboutMiqaat != null &&
+                  miqaat.aboutMiqaat!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'About: ${miqaat.aboutMiqaat}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+              if (!isCaptain) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Would you like to approve or reject this miqaat?',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+            if (!isCaptain) ...[
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _updateMiqaatStatus(miqaat, 'Rejected');
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                ),
+                child: const Text('Reject'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _updateMiqaatStatus(miqaat, 'Approved');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Approve'),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateMiqaatStatus(Miqaat miqaat, String status) async {
+    try {
+      final userData = await _localStorage.getUserData();
+      if (userData == null || userData.id == 0) {
+        throw Exception('User not found');
+      }
+
+      await _miqaatService.updateMemberMiqaatStatus(
+        memberId: userData.id,
+        miqaatId: miqaat.id,
+        status: status,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Miqaat $status successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // Reload miqaats to reflect the change
+      await _loadMemberMiqaats();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update status: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

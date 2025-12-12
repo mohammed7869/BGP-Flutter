@@ -145,7 +145,7 @@ class _MiqaatScreenState extends State<MiqaatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildMiqaatCard(
-            title: 'Eid E Milood Un Nabi',
+            title: 'Eid E Milood Un Nabis',
             dateRange: 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
             location: 'Mumbai, Santa Cruz',
           ),

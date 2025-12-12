@@ -43,12 +43,16 @@ class _CustomBottomNavBarCaptainState extends State<CustomBottomNavBarCaptain> {
     } else if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const AttendanceMiqaatScreen()),
+        MaterialPageRoute(
+            builder: (_) => const AttendanceMiqaatScreen(
+                initialFilter: 'Attendance History')),
       );
     } else if (index == 3) {
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const AttendanceMiqaatScreen()),
+        MaterialPageRoute(
+            builder: (context) =>
+                const AttendanceMiqaatScreen(initialFilter: 'Miqaats')),
       );
     } else if (index == 4) {
       Navigator.push(
