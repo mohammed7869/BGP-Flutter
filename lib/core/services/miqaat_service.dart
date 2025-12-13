@@ -11,6 +11,10 @@ class MiqaatService {
 
   final LocalStorageService _localStorage = LocalStorageService();
 
+  /// Creates a new miqaat. Only Captains can create miqaats.
+  /// 
+  /// IMPORTANT: Once a miqaat is created by a Captain, it cannot be edited
+  /// or deleted by the Captain. This is by design to maintain data integrity.
   Future<Map<String, dynamic>?> createMiqaat({
     required String miqaatName,
     required String jamaat,
@@ -385,6 +389,7 @@ class Miqaat {
   final int volunteerLimit;
   final String? aboutMiqaat;
   final String adminApproval;
+  final String? memberStatus;
   final String captainName;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -399,6 +404,7 @@ class Miqaat {
     required this.volunteerLimit,
     this.aboutMiqaat,
     required this.adminApproval,
+    this.memberStatus,
     required this.captainName,
     required this.createdAt,
     required this.updatedAt,
@@ -415,6 +421,9 @@ class Miqaat {
       volunteerLimit: json['volunteerLimit'] as int? ?? 0,
       aboutMiqaat: json['aboutMiqaat'] as String?,
       adminApproval: json['adminApproval'] as String? ?? 'Pending',
+      memberStatus: json['status'] as String? ??
+          json['memberStatus'] as String? ??
+          json['member_status'] as String?,
       captainName: json['captainName'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),

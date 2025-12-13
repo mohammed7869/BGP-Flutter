@@ -362,18 +362,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     ),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD97706),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.settings,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
+                    _buildStatusIcon(miqaat),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -435,6 +424,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Widget _buildStatusIcon(Miqaat miqaat) {
+    return FutureBuilder(
+      future: _localStorage.getUserData(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final userData = snapshot.data;
+        final isCaptain = userData?.roles == 2;
+
+        // Only show status icon for captains, not for members
+        if (!isCaptain) {
+          return const SizedBox.shrink();
+        }
+
+        final status = miqaat.adminApproval.toLowerCase();
+
+        String statusText = 'Pending';
+        Color backgroundColor = const Color(0xFFFFF3E0);
+        Color textColor = const Color(0xFFE65100);
+
+        if (status == 'approved') {
+          statusText = 'Approved';
+          backgroundColor = Colors.green;
+          textColor = Colors.white;
+        } else if (status == 'rejected') {
+          statusText = 'Rejected';
+          backgroundColor = Colors.red;
+          textColor = Colors.white;
+        } else {
+          statusText = 'Pending';
+          backgroundColor = const Color(0xFFFFF3E0);
+          textColor = const Color(0xFFE65100);
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 4,
+          ),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            statusText,
+            style: TextStyle(
+              fontSize: 9,
+              color: textColor,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _showMiqaatActionDialog(Miqaat miqaat) async {
     final userData = await _localStorage.getUserData();
     final isCaptain = userData?.roles == 2;
@@ -468,7 +516,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               if (!isCaptain) ...[
                 const SizedBox(height: 16),
                 const Text(
-                  'Would you like to approve or reject this miqaat?',
+                  'Would you like to Enroll or Reject this miqaat?',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ],
@@ -499,7 +547,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Approve'),
+                child: const Text('Enroll'),
               ),
             ],
           ],

@@ -53,6 +53,38 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Show development message when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showDevelopmentMessage(context);
+    });
+  }
+
+  void _showDevelopmentMessage(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Under Development'),
+        content: const Text('This page is under development.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              // Navigate back after closing dialog
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),

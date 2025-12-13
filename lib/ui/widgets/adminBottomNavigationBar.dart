@@ -1,6 +1,6 @@
-import 'package:burhaniguardsapp/ui/screens/admin/addUserScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/createMiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
 
 import 'package:flutter/material.dart';
@@ -150,7 +150,7 @@ class _CustomBottomNavBarCaptainState extends State<CustomBottomNavBarCaptain> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddUserScreen()),
+            MaterialPageRoute(builder: (_) => const CreateMiqaatScreen()),
           );
         },
       ),

@@ -1,6 +1,6 @@
-import 'package:burhaniguardsapp/ui/widgets/adminAppBarforPages.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:flutter/material.dart';
 
 class AttendanceMiqaatScreen extends StatefulWidget {
@@ -26,6 +26,17 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     super.initState();
     selectedFilter = widget.initialFilter ?? 'Miqaats';
     _loadMiqaats();
+
+    // Show development message if opened with Attendance History filter
+    if (widget.initialFilter == 'Attendance History') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showDevelopmentMessage(context);
+        // Switch back to Miqaats after showing message
+        setState(() {
+          selectedFilter = 'Miqaats';
+        });
+      });
+    }
   }
 
   Future<void> _loadMiqaats() async {
@@ -91,128 +102,191 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     },
   ];
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          // Custom AppBar with curved bottom
-          buildAppBarWithBackButton(context),
+  void _handleBackNavigation(BuildContext context) {
+    // Always navigate to Dashboard to prevent going back to CreateMiqaatScreen
+    // This ensures proper navigation flow after creating a miqaat
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+    );
+  }
 
-          // Content
-          Expanded(
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text(
-                      'Attendance / Miqaat\'s',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        _buildFilterChip('Miqaats'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Attendance History'),
-                        // const SizedBox(width: 8),
-                        // _buildFilterChip('Rejected'),
-                        // const SizedBox(width: 8),
-                        // _buildFilterChip('Pending'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Miqaat Cards List
-
-                  if (selectedFilter == 'Miqaats') ...[
-                    Expanded(
-                      child: _isLoading
-                          ? const Center(
-                              child: CircularProgressIndicator(),
-                            )
-                          : _errorMessage != null
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        _errorMessage!,
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton(
-                                        onPressed: _loadMiqaats,
-                                        child: const Text('Retry'),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : _miqaats.isEmpty
-                                  ? const Center(
-                                      child: Text(
-                                        'No miqaats found',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    )
-                                  : RefreshIndicator(
-                                      onRefresh: _loadMiqaats,
-                                      child: ListView.builder(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 20),
-                                        itemCount: _miqaats.length,
-                                        itemBuilder: (context, index) {
-                                          return _buildMiqaatCard(
-                                              _miqaats[index]);
-                                        },
-                                      ),
-                                    ),
-                    ),
-                  ],
-
-                  if (selectedFilter == 'Attendance History') ...[
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: attendanceHistory.length,
-                        itemBuilder: (context, index) {
-                          final item = attendanceHistory[index];
-                          return _buildAttendanceCard(
-                            dateRange: item['dateRange'],
-                            eventName: item['eventName'],
-                            totalEnrolled: item['totalEnrolled'],
-                            totalApproved: item['totalApproved'],
-                            totalPresent: item['totalPresent'],
-                            absentCount: item['absentCount'],
-                          );
-                        },
-                      ),
-                    ),
-                  ]
-                ],
-              ),
-            ),
+  void _showDevelopmentMessage(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Under Development'),
+        content: const Text('This page is under development.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('OK'),
           ),
         ],
       ),
-      bottomNavigationBar: const CustomBottomNavBarCaptain(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (!didPop) {
+          _handleBackNavigation(context);
+        }
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            // Custom AppBar with curved bottom
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              decoration: const BoxDecoration(
+                color: Color(0xFF4A1C1C),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back,
+                        color: Colors.white, size: 28),
+                    onPressed: () {
+                      _handleBackNavigation(context);
+                    },
+                  ),
+                  Image.asset('assets/images/burhani guards logo.png',
+                      height: 52),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined,
+                        color: Colors.white, size: 28),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'Attendance / Miqaat\'s',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          _buildFilterChip('Miqaats'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Attendance History'),
+                          // const SizedBox(width: 8),
+                          // _buildFilterChip('Rejected'),
+                          // const SizedBox(width: 8),
+                          // _buildFilterChip('Pending'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Miqaat Cards List
+
+                    if (selectedFilter == 'Miqaats') ...[
+                      Expanded(
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(),
+                              )
+                            : _errorMessage != null
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          _errorMessage!,
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ElevatedButton(
+                                          onPressed: _loadMiqaats,
+                                          child: const Text('Retry'),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : _miqaats.isEmpty
+                                    ? const Center(
+                                        child: Text(
+                                          'No miqaats found',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      )
+                                    : RefreshIndicator(
+                                        onRefresh: _loadMiqaats,
+                                        child: ListView.builder(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 20),
+                                          itemCount: _miqaats.length,
+                                          itemBuilder: (context, index) {
+                                            return _buildMiqaatCard(
+                                                _miqaats[index]);
+                                          },
+                                        ),
+                                      ),
+                      ),
+                    ],
+
+                    if (selectedFilter == 'Attendance History') ...[
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: attendanceHistory.length,
+                          itemBuilder: (context, index) {
+                            final item = attendanceHistory[index];
+                            return _buildAttendanceCard(
+                              dateRange: item['dateRange'],
+                              eventName: item['eventName'],
+                              totalEnrolled: item['totalEnrolled'],
+                              totalApproved: item['totalApproved'],
+                              totalPresent: item['totalPresent'],
+                              absentCount: item['absentCount'],
+                            );
+                          },
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: const CustomBottomNavBarCaptain(),
+      ),
     );
   }
 
@@ -220,9 +294,14 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     final isSelected = selectedFilter == label;
     return GestureDetector(
       onTap: () {
-        setState(() {
-          selectedFilter = label;
-        });
+        if (label == 'Attendance History') {
+          // Show development message for Attendance History
+          _showDevelopmentMessage(context);
+        } else {
+          setState(() {
+            selectedFilter = label;
+          });
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

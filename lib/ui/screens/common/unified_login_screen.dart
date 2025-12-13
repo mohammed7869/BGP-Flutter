@@ -14,7 +14,8 @@ class UnifiedLoginScreen extends StatefulWidget {
   State<UnifiedLoginScreen> createState() => _UnifiedLoginScreenState();
 }
 
-class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
+class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _itsNoController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -22,6 +23,55 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   final AuthService _authService = AuthService();
+
+  late AnimationController _pulseController;
+  late AnimationController _colorController;
+  late Animation<double> _scaleAnimation;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pulse animation controller
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    // Color animation controller
+    _colorController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+
+    // Scale animation (pulse between 1.0 and 1.1)
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Color animation (transition between primary and blue)
+    _colorAnimation = ColorTween(
+      begin: AppColors.primary,
+      end: Colors.blue,
+    ).animate(
+      CurvedAnimation(
+        parent: _colorController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _colorController.dispose();
+    _itsNoController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
@@ -49,13 +99,8 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
               ),
             );
 
-            // Show Baawan ERP popup if user has new_password_hash set, then navigate
-            if (response.hasNewPasswordHash) {
-              _showBaawanErpDialogAndNavigate();
-            } else {
-              // Navigate immediately if no popup needed
-              _navigateToDashboard();
-            }
+            // Navigate to dashboard after login
+            _navigateToDashboard();
           }
         }
       } catch (e) {
@@ -239,26 +284,54 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
 
   Widget _buildFooter() {
     return Column(
-      children: const [
-        Text(
-          'Powered By',
+      children: [
+        const Text(
+          'Powereds By',
           style: TextStyle(
             fontSize: 11,
             color: AppColors.primary,
-            decoration: TextDecoration.underline,
-            decorationColor: Colors.blue,
+            // decoration: TextDecoration.underline,
+            // decorationColor: Colors.blue,
             decorationThickness: 2,
           ),
         ),
-        SizedBox(height: 4),
-        Text(
-          'Clear Concept Solutions',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.primary,
-            decoration: TextDecoration.underline,
-            decorationColor: Colors.blue,
-            decorationThickness: 2,
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () {
+            showDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (BuildContext dialogContext) {
+                return const BaawanErpDialog();
+              },
+            );
+          },
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_pulseController, _colorController]),
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Text(
+                  'Baawan.com',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: _colorAnimation.value,
+                    decoration: TextDecoration.underline,
+                    decorationColor: _colorAnimation.value,
+                    decorationThickness: 2,
+                    fontWeight: FontWeight.w600,
+                    shadows: [
+                      Shadow(
+                        color: _colorAnimation.value?.withOpacity(0.3) ??
+                            Colors.blue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

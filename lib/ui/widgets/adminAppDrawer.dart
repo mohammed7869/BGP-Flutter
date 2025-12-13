@@ -3,7 +3,7 @@ import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 // import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 // import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
-import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
+// import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
 import 'package:flutter/material.dart';
 
@@ -162,11 +162,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                       title: 'Enrolled Events',
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const EnrolledMiqaatScreen()),
-                        );
+                        _showDevelopmentMessage(context);
                       },
                     ),
                     // _buildMenuItem(
@@ -246,6 +242,23 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
         ),
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
+      ),
+    );
+  }
+
+  void _showDevelopmentMessage(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Under Development'),
+        content: const Text('This page is under development.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }

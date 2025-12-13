@@ -534,7 +534,22 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
           ),
         );
 
-        Navigator.push(
+        // Clear form fields after successful creation
+        _miqaatNameController.clear();
+        _fromDateController.clear();
+        _tillDateController.clear();
+        _volunteerLimitController.clear();
+        _aboutController.clear();
+        setState(() {
+          _selectedJamiyat = null;
+          _selectedJamaat = null;
+          _fromDate = null;
+          _tillDate = null;
+        });
+
+        // Use pushReplacement to remove CreateMiqaatScreen from stack
+        // so back button goes to Dashboard instead of back to CreateMiqaatScreen
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
               builder: (context) => const AttendanceMiqaatScreen()),

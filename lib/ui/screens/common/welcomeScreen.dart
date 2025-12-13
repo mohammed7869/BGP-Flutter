@@ -2,6 +2,7 @@ import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/admin_login.dart';
 import 'package:burhaniguardsapp/ui/screens/user/memberLoginScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/shaped_background.dart';
+import 'package:burhaniguardsapp/ui/widgets/baawan_erp_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -25,7 +26,7 @@ class LoginScreen extends StatelessWidget {
                 _buildButtons(context),
                 const SizedBox(height: 40),
                 // Footer
-                _buildFooter(),
+                _buildFooter(context),
                 const SizedBox(height: 20),
               ],
             ),
@@ -114,29 +115,40 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(BuildContext context) {
     return Column(
-      children: const [
-        Text(
+      children: [
+        const Text(
           'Powered By',
           style: TextStyle(
             fontSize: 11,
             color: AppColors.primary,
             decoration: TextDecoration.underline,
-            decorationColor: Colors.blue, // optional
+            // decorationColor: Colors.blue, // optional
             decorationThickness: 2,
           ),
         ),
-        SizedBox(height: 4),
-        Text(
-          'Clear Concept Solutions',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.primary,
-            // fontWeight: FontWeight.w600,
-            decoration: TextDecoration.underline,
-            decorationColor: Colors.blue, // optional
-            decorationThickness: 2,
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () {
+            showDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (BuildContext dialogContext) {
+                return const BaawanErpDialog();
+              },
+            );
+          },
+          child: const Text(
+            'Baawan.com',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.primary,
+              // fontWeight: FontWeight.w600,
+              decoration: TextDecoration.underline,
+              decorationColor: Colors.blue, // optional
+              decorationThickness: 2,
+            ),
           ),
         ),
       ],

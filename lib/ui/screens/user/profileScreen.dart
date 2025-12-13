@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/models/auth_models.dart';
 import 'package:burhaniguardsapp/core/constants/api_constants.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({Key? key}) : super(key: key);
@@ -174,6 +175,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return _buildDefaultAvatar();
   }
 
+  void _handleBackNavigation(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      // If we can't pop (e.g., screen was opened via pushReplacement),
+      // navigate to dashboard explicitly
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -192,129 +206,142 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          // Custom Header with Profile Image
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                height: 160,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF4A1C1C),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (!didPop) {
+          _handleBackNavigation(context);
+        }
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            // Custom Header with Profile Image
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: 160,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF4A1C1C),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
                   ),
-                ),
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon:
-                              const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.notifications_outlined,
-                              color: Colors.white),
-                          onPressed: () {},
-                        ),
-                      ],
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back,
+                                color: Colors.white),
+                            onPressed: () {
+                              _handleBackNavigation(context);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.notifications_outlined,
+                                color: Colors.white),
+                            onPressed: () {},
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              // Profile Image positioned at bottom center
-              Positioned(
-                bottom: -50,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: _buildProfileImage(),
+                // Profile Image positioned at bottom center
+                Positioned(
+                  bottom: -50,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _buildProfileImage(),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 60),
+
+            // Title
+            Center(
+              child: Text(
+                _userData!.fullName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 60),
-
-          // Title
-          Center(
-            child: Text(
-              _userData!.fullName,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
             ),
-          ),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // User Information
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  _buildInfoField(
-                      'Phone No', _formatPhoneNumber(_userData!.contact)),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildInfoField(
-                            'ITS Number', _userData!.itsId ?? 'N/A'),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildInfoField(
-                            'Jamiyat', _userData!.jamiyat ?? 'N/A'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInfoField('Email', _userData!.email),
-                  const SizedBox(height: 16),
-                  _buildInfoField('Jamaat', _userData!.jamaat ?? 'N/A'),
-                  const SizedBox(height: 16),
-                  _buildInfoField('Rank', _userData!.rank),
-                  if (_userData!.gender != null || _userData!.age != null) ...[
+            // User Information
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    _buildInfoField(
+                        'Phone No', _formatPhoneNumber(_userData!.contact)),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        if (_userData!.gender != null)
-                          Expanded(
-                            child:
-                                _buildInfoField('Gender', _userData!.gender!),
-                          ),
-                        if (_userData!.gender != null && _userData!.age != null)
-                          const SizedBox(width: 12),
-                        if (_userData!.age != null)
-                          Expanded(
-                            child: _buildInfoField(
-                                'Age', _userData!.age.toString()),
-                          ),
-                        if (_userData!.gender == null && _userData!.age == null)
-                          const Expanded(child: SizedBox()),
+                        Expanded(
+                          child: _buildInfoField(
+                              'ITS Number', _userData!.itsId ?? 'N/A'),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildInfoField(
+                              'Jamiyat', _userData!.jamiyat ?? 'N/A'),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    _buildInfoField('Email', _userData!.email),
+                    const SizedBox(height: 16),
+                    _buildInfoField('Jamaat', _userData!.jamaat ?? 'N/A'),
+                    const SizedBox(height: 16),
+                    _buildInfoField('Rank', _userData!.rank),
+                    if (_userData!.gender != null ||
+                        _userData!.age != null) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          if (_userData!.gender != null)
+                            Expanded(
+                              child:
+                                  _buildInfoField('Gender', _userData!.gender!),
+                            ),
+                          if (_userData!.gender != null &&
+                              _userData!.age != null)
+                            const SizedBox(width: 12),
+                          if (_userData!.age != null)
+                            Expanded(
+                              child: _buildInfoField(
+                                  'Age', _userData!.age.toString()),
+                            ),
+                          if (_userData!.gender == null &&
+                              _userData!.age == null)
+                            const Expanded(child: SizedBox()),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 30),
                   ],
-                  const SizedBox(height: 30),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
