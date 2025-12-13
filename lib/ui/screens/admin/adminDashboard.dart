@@ -4,7 +4,6 @@ import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/createMiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/membersListScreen.dart';
-import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBar.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppDrawer.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
@@ -237,23 +236,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   color: Color(0xFF333333),
                 ),
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const MiqaatScreen()),
-                  );
-                },
-                child: const Text(
-                  'See All +',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF4A1C1C),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              // TextButton(
+              //   onPressed: () {
+              //     Navigator.push(
+              //       context,
+              //       MaterialPageRoute(
+              //           builder: (context) => const MiqaatScreen()),
+              //     );
+              //   },
+              //   child: const Text(
+              //     'See All +',
+              //     style: TextStyle(
+              //       fontSize: 14,
+              //       color: Color(0xFF4A1C1C),
+              //       fontWeight: FontWeight.w600,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
           const SizedBox(height: 12),
