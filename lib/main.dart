@@ -1,13 +1,34 @@
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pwa_install/pwa_install.dart';
+// Temporarily disabled PWA install due to web compatibility issues
+// import 'package:pwa_install/pwa_install.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  PWAInstall().setup(installCallback: () {
-    debugPrint('APP INSTALLED!');
-  });
+
+  // Setup global error handlers
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter Error: ${details.exception}');
+  };
+
+  // PWA install setup disabled temporarily due to web compatibility issues
+  // The pwa_install package is causing initialization errors on web
+  // TODO: Re-enable once pwa_install package is updated or alternative solution is found
+  /*
+  if (kIsWeb) {
+    try {
+      PWAInstall().setup(installCallback: () {
+        debugPrint('APP INSTALLED!');
+      });
+    } catch (e) {
+      debugPrint('PWA Install setup error: $e');
+    }
+  }
+  */
+
   runApp(const MyApp());
 }
 
@@ -19,27 +40,24 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Burhani Guards',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
-        textTheme: GoogleFonts.poppinsTextTheme(),
+        textTheme: _getTextTheme(),
       ),
       home: const UnifiedLoginScreen(),
     );
+  }
+
+  // Helper method to get text theme with fallback
+  static TextTheme _getTextTheme() {
+    try {
+      return GoogleFonts.poppinsTextTheme();
+    } catch (e) {
+      debugPrint('Error loading Google Fonts: $e');
+      // Return default text theme as fallback
+      return Typography.material2021().black;
+    }
   }
 }

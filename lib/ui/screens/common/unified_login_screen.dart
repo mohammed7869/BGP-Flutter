@@ -128,89 +128,101 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
     return Scaffold(
       body: ShapedBackground(
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
-                // Logo and Title Section
-                _buildHeader(),
-                const Spacer(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 40),
+                        // Logo and Title Section
+                        _buildHeader(),
+                        SizedBox(height: constraints.maxHeight * 0.1),
 
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ITS No. Field
-                      TextFormField(
-                        controller: _itsNoController,
-                        decoration: const InputDecoration(
-                          labelText: "ITS No.",
-                          prefixIcon: Icon(Icons.badge),
-                          border: UnderlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                        maxLength: 8,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "ITS No. is required";
-                          }
-                          if (!RegExp(r'^\d+$').hasMatch(value)) {
-                            return "Only numerical values are allowed";
-                          }
-                          if (value.length < 8) {
-                            return "ITS No. must be exactly 8 digits";
-                          }
-                          if (value.length > 8) {
-                            return "ITS No. must be maximum 8 characters";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ITS No. Field
+                              TextFormField(
+                                controller: _itsNoController,
+                                decoration: const InputDecoration(
+                                  labelText: "ITS No.",
+                                  prefixIcon: Icon(Icons.badge),
+                                  border: UnderlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                maxLength: 8,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "ITS No. is required";
+                                  }
+                                  if (!RegExp(r'^\d+$').hasMatch(value)) {
+                                    return "Only numerical values are allowed";
+                                  }
+                                  if (value.length < 8) {
+                                    return "ITS No. must be exactly 8 digits";
+                                  }
+                                  if (value.length > 8) {
+                                    return "ITS No. must be maximum 8 characters";
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
 
-                      // Password Field
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_isPasswordVisible,
-                        decoration: InputDecoration(
-                          labelText: "Password",
-                          prefixIcon: const Icon(Icons.lock),
-                          border: const UnderlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: Icon(_isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off),
-                            onPressed: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible;
-                              });
-                            },
+                              // Password Field
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: !_isPasswordVisible,
+                                decoration: InputDecoration(
+                                  labelText: "Password",
+                                  prefixIcon: const Icon(Icons.lock),
+                                  border: const UnderlineInputBorder(),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(_isPasswordVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isPasswordVisible =
+                                            !_isPasswordVisible;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Password is required";
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Login Button
+                            ],
                           ),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Password is required";
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
 
-                      // Login Button
-                    ],
+                        // Buttons Section
+                        _buildButtons(context, _submit),
+                        const SizedBox(height: 40),
+                        // Footer
+                        _buildFooter(),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-
-                // Buttons Section
-                _buildButtons(context, _submit),
-                const SizedBox(height: 40),
-                // Footer
-                _buildFooter(),
-                const SizedBox(height: 20),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
