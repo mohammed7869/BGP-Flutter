@@ -405,8 +405,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ),
             child: InkWell(
-                onTap: () {
-                  _showMiqaatActionDialog(miqaat);
+                onTap: () async {
+                  final userData = await _localStorage.getUserData();
+                  final isCaptain = userData?.roles == 2;
+
+                  if (isCaptain) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MembersListScreen(miqaat: miqaat),
+                      ),
+                    );
+                  } else {
+                    _showMiqaatActionDialog(miqaat);
+                  }
                 },
                 child: Text(
                   'View Details',

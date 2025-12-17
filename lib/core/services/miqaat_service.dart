@@ -377,6 +377,152 @@ class MiqaatService {
       rethrow;
     }
   }
+
+  Future<List<EnrolledMember>> getEnrolledMembersByMiqaatId(int miqaatId) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getEnrolledMembers}/$miqaatId/enrolled-members');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse is List) {
+          return jsonResponse
+              .map((item) => EnrolledMember.fromJson(item as Map<String, dynamic>))
+              .toList();
+        } else {
+          throw Exception('Invalid response format from server.');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Only Captains can view enrolled members');
+      } else {
+        String errorMessage = 'Failed to fetch enrolled members. Please try again.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          } else if (errorBody is String) {
+            errorMessage = errorBody;
+          }
+        } catch (e) {
+          errorMessage =
+              response.body.isNotEmpty ? response.body : errorMessage;
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('FormatException') ||
+          errorMsg.contains('Unexpected character')) {
+        throw Exception('Invalid response from server. Please try again.');
+      } else if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception(
+              'Unable to connect to server. Please check:\n1. API is running\n2. Correct IP address in api_constants.dart\n3. Phone and laptop on same Wi-Fi');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> updateFinalStatus({
+    required int miqaatId,
+    required int memberId,
+    required String finalStatus,
+  }) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateMemberMiqaatStatus}/$miqaatId/member/$memberId/final-status');
+
+      final requestBody = {
+        'status': finalStatus,
+      };
+
+      final response = await http
+          .patch(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(requestBody),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Only Captains can update final status');
+      } else {
+        String errorMessage = 'Failed to update final status. Please try again.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          } else if (errorBody is String) {
+            errorMessage = errorBody;
+          }
+        } catch (e) {
+          errorMessage =
+              response.body.isNotEmpty ? response.body : errorMessage;
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('FormatException') ||
+          errorMsg.contains('Unexpected character')) {
+        throw Exception('Invalid response from server. Please try again.');
+      } else if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception(
+              'Unable to connect to server. Please check:\n1. API is running\n2. Correct IP address in api_constants.dart\n3. Phone and laptop on same Wi-Fi');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
 }
 
 class Miqaat {
@@ -517,5 +663,44 @@ class JamaatItem {
   }
 
   String get displayName => '$name ($count)';
+}
+
+class EnrolledMember {
+  final int id;
+  final String fullName;
+  final String? email;
+  final String? contact;
+  final String? rank;
+  final String? jamaat;
+  final String? jamiyat;
+  final String? finalStatus;
+
+  EnrolledMember({
+    required this.id,
+    required this.fullName,
+    this.email,
+    this.contact,
+    this.rank,
+    this.jamaat,
+    this.jamiyat,
+    this.finalStatus,
+  });
+
+  factory EnrolledMember.fromJson(Map<String, dynamic> json) {
+    // Handle both int and long (which comes as int in JSON)
+    final idValue = json['id'];
+    final id = idValue is int ? idValue : (idValue as num?)?.toInt() ?? 0;
+    
+    return EnrolledMember(
+      id: id,
+      fullName: json['fullName'] as String? ?? '',
+      email: json['email'] as String?,
+      contact: json['contact'] as String?,
+      rank: json['rank'] as String?,
+      jamaat: json['jamaat'] as String?,
+      jamiyat: json['jamiyat'] as String?,
+      finalStatus: json['finalStatus'] as String?,
+    );
+  }
 }
 
