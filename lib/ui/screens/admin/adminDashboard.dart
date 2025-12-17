@@ -405,30 +405,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ),
             child: InkWell(
-                onTap: () async {
-                  final userData = await _localStorage.getUserData();
-                  final isCaptain = userData?.roles == 2;
+                child: FutureBuilder(
+                    future: _localStorage.getUserData(),
+                    builder: (context, snapshot) {
+                      final isCaptain = snapshot.data?.roles == 2;
+                      final memberStatus =
+                          miqaat.memberStatus?.toLowerCase() ?? '';
+                      final finalStatus =
+                          miqaat.finalStatus?.toLowerCase() ?? '';
 
-                  if (isCaptain) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MembersListScreen(miqaat: miqaat),
-                      ),
-                    );
-                  } else {
-                    _showMiqaatActionDialog(miqaat);
-                  }
-                },
-                child: Text(
-                  'View Details',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )),
+                      String buttonText = 'View Details';
+                      bool enableTap = true;
+
+                      if (!isCaptain) {
+                        if (finalStatus == 'approved') {
+                          buttonText = 'Approved by Captain';
+                          enableTap = false;
+                        } else if (finalStatus == 'rejected') {
+                          buttonText = 'Rejected by Captain';
+                          enableTap = false;
+                        } else if (memberStatus == 'approved') {
+                          buttonText = 'Enrolled - Awaiting Captain Approval';
+                          enableTap = false;
+                        } else if (memberStatus == 'rejected') {
+                          buttonText = 'Rejected by You';
+                          enableTap = false;
+                        }
+                      }
+
+                      return InkWell(
+                        onTap: !enableTap
+                            ? null
+                            : () async {
+                                final userData = snapshot.data ??
+                                    await _localStorage.getUserData();
+                                final isCaptainTap = userData?.roles == 2;
+
+                                if (isCaptainTap) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          MembersListScreen(miqaat: miqaat),
+                                    ),
+                                  );
+                                } else {
+                                  _showMiqaatActionDialog(miqaat);
+                                }
+                              },
+                        child: Text(
+                          buttonText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    })),
           ),
         ],
       ),

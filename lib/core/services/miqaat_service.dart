@@ -536,6 +536,7 @@ class Miqaat {
   final String? aboutMiqaat;
   final String adminApproval;
   final String? memberStatus;
+  final String? finalStatus;
   final String captainName;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -551,6 +552,7 @@ class Miqaat {
     this.aboutMiqaat,
     required this.adminApproval,
     this.memberStatus,
+    this.finalStatus,
     required this.captainName,
     required this.createdAt,
     required this.updatedAt,
@@ -570,6 +572,8 @@ class Miqaat {
       memberStatus: json['status'] as String? ??
           json['memberStatus'] as String? ??
           json['member_status'] as String?,
+      finalStatus: json['finalStatus'] as String? ??
+          json['final_status'] as String?,
       captainName: json['captainName'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
