@@ -51,9 +51,9 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
       final user = await _localStorage.getUserData();
       final miqaats = await _miqaatService.getAllMiqaats();
 
-      // If member (not captain), show only miqaats of their jamaat
+      // Show only miqaats of the logged-in user's jamaat (for both members and captains)
       List<Miqaat> filtered = miqaats;
-      if (user != null && user.roles != 2 && user.jamaat != null) {
+      if (user != null && user.jamaat != null) {
         final userJamaat = user.jamaat!.toLowerCase();
         filtered = miqaats
             .where((m) => (m.jamaat).toLowerCase() == userJamaat)

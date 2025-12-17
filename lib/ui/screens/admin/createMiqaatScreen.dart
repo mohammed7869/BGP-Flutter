@@ -16,6 +16,8 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
   bool _isCaptain = false;
+  String? _userJamiyat;
+  String? _userJamaat;
   DateTime? _fromDate;
   DateTime? _tillDate;
   bool _isLoadingData = false;
@@ -45,6 +47,10 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
         userData?.roles == 2 || userData?.rank.toLowerCase() == 'captain';
     setState(() {
       _isCaptain = isCaptain;
+      _userJamiyat = userData?.jamiyat;
+      _userJamaat = userData?.jamaat;
+      _selectedJamiyat = _userJamiyat;
+      _selectedJamaat = _userJamaat;
     });
 
     // If user is captain, fetch jamiyat and jamaat data
@@ -64,6 +70,18 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
         setState(() {
           _jamiyats = response.jamiyats;
           _jamaats = response.jamaats;
+          // If captain, lock to own jamiyat/jamaat and prefill volunteer limit
+          if (_isCaptain) {
+            if (_userJamiyat != null) {
+              _selectedJamiyat = _userJamiyat;
+            }
+            if (_userJamaat != null) {
+              _selectedJamaat = _userJamaat;
+              final match = _jamaats
+                  .firstWhere((j) => j.name == _userJamaat, orElse: () => JamaatItem(name: _userJamaat!, count: 0));
+              _volunteerLimitController.text = match.count.toString();
+            }
+          }
         });
       }
     } catch (e) {
@@ -618,7 +636,7 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
               child: Text(jamiyat.displayName),
             );
           }).toList(),
-          onChanged: _isLoadingData
+          onChanged: (_isLoadingData || _isCaptain)
               ? null
               : (String? value) {
                   setState(() {
@@ -674,13 +692,16 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
           hint: _isLoadingData
               ? const Text('Loading...')
               : const Text('Select Jamaat'),
-          items: _jamaats.map((jamaat) {
+          items: _jamaats
+              .where((jamaat) =>
+                  !_isCaptain || _userJamaat == null || jamaat.name == _userJamaat)
+              .map((jamaat) {
             return DropdownMenuItem<String>(
               value: jamaat.name,
               child: Text(jamaat.displayName),
             );
           }).toList(),
-          onChanged: _isLoadingData
+          onChanged: (_isLoadingData || _isCaptain)
               ? null
               : (String? value) {
                   setState(() {

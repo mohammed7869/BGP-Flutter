@@ -38,7 +38,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     try {
       final userData = await _localStorage.getUserData();
       if (userData != null && userData.id > 0) {
-        final miqaats = await _miqaatService.getMemberMiqaats(userData.id);
+        // Captains: show miqaats of their own jamaat from all miqaats
+        // Members: show assigned miqaats, filtered to their jamaat for safety
+        List<Miqaat> miqaats;
+        if (userData.roles == 2) {
+          miqaats = await _miqaatService.getAllMiqaats();
+        } else {
+          miqaats = await _miqaatService.getMemberMiqaats(userData.id);
+        }
+
+        if (userData.jamaat != null && userData.jamaat!.isNotEmpty) {
+          final jamaatLower = userData.jamaat!.toLowerCase();
+          miqaats = miqaats
+              .where((m) => (m.jamaat).toLowerCase() == jamaatLower)
+              .toList();
+        }
+
         setState(() {
           _memberMiqaats = miqaats;
           _isLoadingMiqaats = false;
