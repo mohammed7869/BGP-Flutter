@@ -1,5 +1,6 @@
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
+import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:flutter/material.dart';
 
@@ -17,6 +18,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
   late String selectedFilter;
 
   final MiqaatService _miqaatService = MiqaatService();
+  final LocalStorageService _localStorage = LocalStorageService();
   List<Miqaat> _miqaats = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -46,9 +48,20 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     });
 
     try {
+      final user = await _localStorage.getUserData();
       final miqaats = await _miqaatService.getAllMiqaats();
+
+      // If member (not captain), show only miqaats of their jamaat
+      List<Miqaat> filtered = miqaats;
+      if (user != null && user.roles != 2 && user.jamaat != null) {
+        final userJamaat = user.jamaat!.toLowerCase();
+        filtered = miqaats
+            .where((m) => (m.jamaat).toLowerCase() == userJamaat)
+            .toList();
+      }
+
       setState(() {
-        _miqaats = miqaats;
+        _miqaats = filtered;
         _isLoading = false;
       });
     } catch (e) {
