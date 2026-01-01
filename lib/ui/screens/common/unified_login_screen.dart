@@ -3,7 +3,6 @@ import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
 import 'package:burhaniguardsapp/ui/widgets/baawan_erp_dialog.dart';
-import 'package:burhaniguardsapp/ui/widgets/shaped_background.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -126,101 +125,190 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ShapedBackground(
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/welcome2.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 40),
-                        // Logo and Title Section
-                        _buildHeader(),
-                        SizedBox(height: constraints.maxHeight * 0.1),
-
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // ITS No. Field
-                              TextFormField(
-                                controller: _itsNoController,
-                                decoration: const InputDecoration(
-                                  labelText: "ITS No.",
-                                  prefixIcon: Icon(Icons.badge),
-                                  border: UnderlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                                maxLength: 8,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "ITS No. is required";
-                                  }
-                                  if (!RegExp(r'^\d+$').hasMatch(value)) {
-                                    return "Only numerical values are allowed";
-                                  }
-                                  if (value.length < 8) {
-                                    return "ITS No. must be exactly 8 digits";
-                                  }
-                                  if (value.length > 8) {
-                                    return "ITS No. must be maximum 8 characters";
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Password Field
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: !_isPasswordVisible,
-                                decoration: InputDecoration(
-                                  labelText: "Password",
-                                  prefixIcon: const Icon(Icons.lock),
-                                  border: const UnderlineInputBorder(),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(_isPasswordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off),
-                                    onPressed: () {
-                                      setState(() {
-                                        _isPasswordVisible =
-                                            !_isPasswordVisible;
-                                      });
-                                    },
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Password is required";
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Login Button
-                            ],
-                          ),
-                        ),
-
-                        // Buttons Section
-                        _buildButtons(context, _submit),
-                        const SizedBox(height: 40),
-                        // Footer
-                        _buildFooter(),
-                        const SizedBox(height: 20),
-                      ],
+              return Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          // Logo at the top
+                          _buildLogo(),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                  // Central card with form - aligned at bottom
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.all(24.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.50),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Logo
+                            Image.asset(
+                              'assets/images/burhaniguards_logo.png',
+                              height: 113,
+                            ),
+                            const SizedBox(height: 32),
+                            // ITS No. Field
+                            TextFormField(
+                                    controller: _itsNoController,
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 16,
+                                    ),
+                                    decoration: InputDecoration(
+                                      labelText: "ITS No.",
+                                      labelStyle: const TextStyle(
+                                        color: Colors.black87,
+                                      ),
+                                      prefixIcon: const Icon(
+                                        Icons.badge,
+                                        color: AppColors.primary,
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.primary,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.primary,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.primary,
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 8,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return "ITS No. is required";
+                                      }
+                                      if (!RegExp(r'^\d+$').hasMatch(value)) {
+                                        return "Only numerical values are allowed";
+                                      }
+                                      if (value.length < 8) {
+                                        return "ITS No. must be exactly 8 digits";
+                                      }
+                                      if (value.length > 8) {
+                                        return "ITS No. must be maximum 8 characters";
+                                      }
+                                      return null;
+                                    },
+                                ),
+                                const SizedBox(height: 16),
+                                // Password Field
+                                TextFormField(
+                                    controller: _passwordController,
+                                    obscureText: !_isPasswordVisible,
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 16,
+                                    ),
+                                    decoration: InputDecoration(
+                                      labelText: "Password",
+                                      labelStyle: const TextStyle(
+                                        color: Colors.black87,
+                                      ),
+                                      prefixIcon: const Icon(
+                                        Icons.lock,
+                                        color: AppColors.primary,
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _isPasswordVisible
+                                              ? Icons.visibility
+                                              : Icons.visibility_off,
+                                          color: AppColors.primary,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _isPasswordVisible =
+                                                !_isPasswordVisible;
+                                          });
+                                        },
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.primary,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.primary,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.primary,
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return "Password is required";
+                                      }
+                                      return null;
+                                    },
+                                ),
+                                const SizedBox(height: 24),
+                                // Login Button
+                                _buildButtons(context, _submit),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  const SizedBox(height: 20),
+                  // Footer
+                  _buildFooter(),
+                  const SizedBox(height: 20),
+                ],
               );
             },
           ),
@@ -229,22 +317,22 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        // Logo with laurel wreath
-        Image.asset('assets/images/burhaniguards_logo.png', height: 113),
-        const SizedBox(height: 8),
-
-        const SizedBox(height: 40),
-        Text(
-          'Welcome',
-          style: GoogleFonts.poppins(
-              fontSize: 55,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary),
-        ),
-      ],
+  Widget _buildLogo() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      // child: Image.asset(
+      //   'assets/images/burhaniguards_logo.png',
+      //   height: 113,
+      // ),
     );
   }
 
@@ -297,14 +385,19 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
   Widget _buildFooter() {
     return Column(
       children: [
-        const Text(
-          'Powereds By',
+        Text(
+          'Powered By',
           style: TextStyle(
             fontSize: 11,
             color: AppColors.primary,
-            // decoration: TextDecoration.underline,
-            // decorationColor: Colors.blue,
-            decorationThickness: 2,
+            fontWeight: FontWeight.w500,
+            shadows: [
+              Shadow(
+                color: Colors.white.withOpacity(0.9),
+                blurRadius: 8,
+                offset: const Offset(5, 1),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 4),
@@ -330,13 +423,12 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
                     color: _colorAnimation.value,
                     decoration: TextDecoration.underline,
                     decorationColor: _colorAnimation.value,
-                    decorationThickness: 2,
+                    decorationThickness: 1.5,
                     fontWeight: FontWeight.w600,
                     shadows: [
                       Shadow(
-                        color: _colorAnimation.value?.withOpacity(0.3) ??
-                            Colors.blue.withOpacity(0.3),
-                        blurRadius: 8,
+                        color: Colors.white.withOpacity(0.9),
+                        blurRadius: 5,
                         offset: const Offset(0, 2),
                       ),
                     ],

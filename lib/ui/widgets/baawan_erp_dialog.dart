@@ -11,21 +11,42 @@ class BaawanErpDialog extends StatelessWidget {
   Future<void> _launchWebsite(BuildContext context) async {
     try {
       final Uri url = Uri.parse('https://www.baawanerp.com/');
-      bool launched = false;
-      if (await canLaunchUrl(url)) {
-        launched = await launchUrl(url, mode: LaunchMode.externalApplication);
-        // Call the callback to indicate website was visited (before closing dialog)
-        if (onWebsiteVisited != null && launched) {
-          onWebsiteVisited!();
+      
+      // Check if URL can be launched
+      if (!await canLaunchUrl(url)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to open the website. Please check your internet connection.'),
+            ),
+          );
         }
+        return;
       }
-      // Close dialog after launching URL (or if it fails)
+      
+      // Launch URL in external browser
+      final bool launched = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+      
+      // Call the callback to indicate website was visited (before closing dialog)
+      if (onWebsiteVisited != null && launched) {
+        onWebsiteVisited!();
+      }
+      
+      // Close dialog after launching URL
       if (context.mounted) {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      // If URL launching fails, still close the dialog
+      // If URL launching fails, show error and close dialog
       if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening website: ${e.toString()}'),
+          ),
+        );
         Navigator.of(context).pop();
       }
     }
