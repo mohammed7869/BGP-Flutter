@@ -10,7 +10,7 @@ class BaawanErpDialog extends StatelessWidget {
 
   Future<void> _launchWebsite(BuildContext context) async {
     try {
-      final Uri url = Uri.parse('https://www.baawanerp.com/');
+      final Uri url = Uri.parse('https://baawan.com/');
       
       // Check if URL can be launched
       if (!await canLaunchUrl(url)) {
@@ -56,7 +56,7 @@ class BaawanErpDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -69,18 +69,23 @@ class BaawanErpDialog extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.business_center,
-                      color: AppColors.primary,
-                      size: 22,
-                    ),
+                    // margin: const EdgeInsets.only(left: 5),
+                    // decoration: BoxDecoration(
+                    //   color: AppColors.primary.withOpacity(0.1),
+                    //   borderRadius: BorderRadius.circular(12),
+                    // ),
+                child: ClipRRect(
+  borderRadius: BorderRadius.circular(12),
+  child: Image.asset(
+    'assets/images/baawan.png',
+    width: 72,
+    height: 72,
+    fit: BoxFit.contain,
+  ),
+),
+
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 3),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,42 +123,43 @@ class BaawanErpDialog extends StatelessWidget {
               // ),
               const SizedBox(height: 16),
 
-              // Benefits List
-              _buildBenefitItem(
-                Icons.speed,
-                'Streamlined Operations',
-                '',
-              ),
-              const SizedBox(height: 12),
-              _buildBenefitItem(
-                Icons.insights,
-                'Real-time Analytics',
-                '',
-              ),
-              const SizedBox(height: 12),
-              _buildBenefitItem(
-                Icons.account_tree,
-                'Centralized Management',
-                '',
-              ),
-              const SizedBox(height: 12),
-              _buildBenefitItem(
-                Icons.security,
-                'Enhanced Security',
-                '',
-              ),
-              const SizedBox(height: 12),
-              _buildBenefitItem(
-                Icons.trending_up,
-                'Scalable Growth',
-                '',
-              ),
-              const SizedBox(height: 12),
-              _buildBenefitItem(
-                Icons.calculate,
-                'Cost Reduction',
-                '',
-              ),
+             // Benefits List
+_buildBenefitItem(
+  Icons.receipt_long,
+  'Accounting & GST Compliance',
+  '',
+),
+const SizedBox(height: 12),
+_buildBenefitItem(
+  Icons.description,
+  'E-Invoicing',
+  '',
+),
+const SizedBox(height: 12),
+_buildBenefitItem(
+  Icons.inventory_2,
+  'Inventory Management',
+  '',
+),
+const SizedBox(height: 12),
+_buildBenefitItem(
+  Icons.group_work,
+  'Multi User / Multi Location',
+  '',
+),
+const SizedBox(height: 12),
+_buildBenefitItem(
+  Icons.cloud_done,
+  'Cloud Based & Mobile App',
+  '',
+),
+const SizedBox(height: 12),
+_buildBenefitItem(
+  Icons.admin_panel_settings,
+  'Role Based Permission',
+  '',
+),
+
               const SizedBox(height: 24),
 
               // CTA Button

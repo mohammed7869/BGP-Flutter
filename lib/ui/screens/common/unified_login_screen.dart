@@ -13,8 +13,7 @@ class UnifiedLoginScreen extends StatefulWidget {
   State<UnifiedLoginScreen> createState() => _UnifiedLoginScreenState();
 }
 
-class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
-    with TickerProviderStateMixin {
+class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _itsNoController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -23,50 +22,8 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
   bool _isLoading = false;
   final AuthService _authService = AuthService();
 
-  late AnimationController _pulseController;
-  late AnimationController _colorController;
-  late Animation<double> _scaleAnimation;
-  late Animation<Color?> _colorAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    // Pulse animation controller
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    // Color animation controller
-    _colorController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat();
-
-    // Scale animation (pulse between 1.0 and 1.1)
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    // Color animation (transition between primary and blue)
-    _colorAnimation = ColorTween(
-      begin: AppColors.primary,
-      end: Colors.blue,
-    ).animate(
-      CurvedAnimation(
-        parent: _colorController,
-        curve: Curves.easeInOut,
-      ),
-    );
-  }
-
   @override
   void dispose() {
-    _pulseController.dispose();
-    _colorController.dispose();
     _itsNoController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -387,17 +344,10 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
       children: [
         Text(
           'Powered By',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 11,
-            color: AppColors.primary,
+            color: Colors.white,
             fontWeight: FontWeight.w500,
-            shadows: [
-              Shadow(
-                color: Colors.white.withOpacity(0.9),
-                blurRadius: 8,
-                offset: const Offset(5, 1),
-              ),
-            ],
           ),
         ),
         const SizedBox(height: 4),
@@ -411,31 +361,16 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
               },
             );
           },
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_pulseController, _colorController]),
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _scaleAnimation.value,
-                child: Text(
-                  'Baawan.com',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _colorAnimation.value,
-                    decoration: TextDecoration.underline,
-                    decorationColor: _colorAnimation.value,
-                    decorationThickness: 1.5,
-                    fontWeight: FontWeight.w600,
-                    shadows: [
-                      Shadow(
-                        color: Colors.white.withOpacity(0.9),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: const Text(
+            'Baawan.com',
+            style: TextStyle(
+              fontSize: 20,
+              color: Colors.white,
+              decoration: TextDecoration.underline,
+              decorationColor: Colors.white,
+              decorationThickness: 1.5,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
