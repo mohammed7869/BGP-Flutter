@@ -98,8 +98,10 @@ class _CustomBottomNavBarMemberState extends State<CustomBottomNavBarMember> {
     return InkWell(
       onTap: () => _onItemTapped(index),
       child: SizedBox(
+        width: 70,
         height: 80,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.all(12),
@@ -111,13 +113,18 @@ class _CustomBottomNavBarMemberState extends State<CustomBottomNavBarMember> {
                 size: 28,
               ),
             ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isSelected
-                    ? const Color(0xFF4A1C1C)
-                    : const Color(0xFF999999),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSelected
+                      ? const Color(0xFF4A1C1C)
+                      : const Color(0xFF999999),
+                ),
               ),
             ),
           ],

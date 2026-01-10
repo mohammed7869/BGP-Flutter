@@ -1,3 +1,6 @@
+import 'package:burhaniguardsapp/core/services/user_service.dart';
+import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
+import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/membersListScreen.dart';
 import 'package:flutter/material.dart';
 
@@ -10,27 +13,128 @@ class AddUserScreen extends StatefulWidget {
 
 class _AddUserScreenState extends State<AddUserScreen> {
   final _formKey = GlobalKey<FormState>();
+  final UserService _userService = UserService();
+  final MiqaatService _miqaatService = MiqaatService();
+  final LocalStorageService _localStorage = LocalStorageService();
+  bool _isLoading = false;
 
-  final TextEditingController _memberNameController =
-      TextEditingController(text: 'Hatim Ghadiyali');
-  final TextEditingController _phoneController =
-      TextEditingController(text: '9876543210');
-  final TextEditingController _addressController =
-      TextEditingController(text: 'Bungalow No.2');
-  final TextEditingController _jamaat1Controller =
-      TextEditingController(text: 'Kalimi Mohalla');
-  final TextEditingController _jamaat2Controller =
-      TextEditingController(text: 'Poona');
-  final TextEditingController _cityController =
-      TextEditingController(text: 'Pune');
-  final TextEditingController _rankController =
-      TextEditingController(text: '01233');
-  final TextEditingController _yearController =
-      TextEditingController(text: '2022');
+  final TextEditingController _itsIdController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
-  bool isActive = true;
-  bool isBGIMember = false;
-  String designation = 'User';
+  String? _selectedRank = 'Member';
+  String? _selectedGender;
+  String? _selectedJamiyat;
+  String? _selectedJamaat;
+
+  List<JamiyatItem> _jamiyats = [];
+  List<JamaatItem> _jamaats = [];
+  bool _isLoadingJamiyatJamaat = false;
+
+  final List<String> _ranks = [
+    'Member',
+    'Captain',
+    'Vice Captain',
+    'Asst. Group Leader',
+    'Group Leader',
+    'Major (Captain)',
+    'Resource Admin',
+    'Assistant Commander',
+  ];
+
+  final List<String> _genders = ['Male', 'Female'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadJamiyatJamaat();
+  }
+
+  Future<void> _loadJamiyatJamaat() async {
+    setState(() {
+      _isLoadingJamiyatJamaat = true;
+    });
+
+    try {
+      final response = await _miqaatService.getJamiyatJamaatWithCounts();
+      if (response != null) {
+        setState(() {
+          _jamiyats = response.jamiyats;
+          _jamaats = response.jamaats;
+          _isLoadingJamiyatJamaat = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingJamiyatJamaat = false;
+      });
+    }
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _userService.createMember(
+        itsId: _itsIdController.text.trim(),
+        fullName: _fullNameController.text.trim(),
+        email: _emailController.text.trim(),
+        contact: _contactController.text.trim().isNotEmpty
+            ? _contactController.text.trim()
+            : null,
+        rank: _selectedRank,
+        jamiyat: _selectedJamiyat,
+        jamaat: _selectedJamaat,
+        gender: _selectedGender,
+        age: _ageController.text.trim().isNotEmpty
+            ? int.tryParse(_ageController.text.trim())
+            : null,
+        password: _passwordController.text.trim().isNotEmpty
+            ? _passwordController.text.trim()
+            : null,
+      );
+
+      if (mounted) {
+        // Check if current user is Captain (role = 2)
+        final userData = await _localStorage.getUserData();
+        final isCaptain = userData?.roles == 2;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isCaptain 
+                ? 'Member Created Awaiting Admin Approval'
+                : 'Member created successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate success
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create member: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,52 +166,16 @@ class _AddUserScreenState extends State<AddUserScreen> {
                               const Icon(Icons.arrow_back, color: Colors.white),
                           onPressed: () => Navigator.pop(context),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.notifications_outlined,
-                              color: Colors.white),
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Profile Image with Upload Icon
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.person,
-                            size: 40, color: Colors.grey),
-                      ),
-                      Positioned(
-                        bottom: -2,
-                        right: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
+                        const Text(
+                          'Add Member',
+                          style: TextStyle(
                             color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: const Color(0xFF4A1C1C), width: 2),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: const Icon(Icons.upload,
-                              size: 14, color: Color(0xFF4A1C1C)),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Upload Image',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
+                        const SizedBox(width: 48), // Balance the back button
+                      ],
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -128,7 +196,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Add User',
+                        'Member Information',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -136,93 +204,63 @@ class _AddUserScreenState extends State<AddUserScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _buildTextField('Member Name', _memberNameController),
+                      _buildTextField('ITS ID *', _itsIdController,
+                          keyboardType: TextInputType.number, maxLength: 8),
                       const SizedBox(height: 16),
-                      _buildTextField('Phone No.', _phoneController,
+                      _buildTextField('Full Name *', _fullNameController),
+                      const SizedBox(height: 16),
+                      _buildTextField('Email *', _emailController,
+                          keyboardType: TextInputType.emailAddress),
+                      const SizedBox(height: 16),
+                      _buildTextField('Contact', _contactController,
                           keyboardType: TextInputType.phone),
                       const SizedBox(height: 16),
-                      _buildTextField('Address', _addressController),
+                      _buildDropdownField('Rank', _selectedRank, _ranks,
+                          (value) => setState(() => _selectedRank = value)),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                              child: _buildTextField(
-                                  'Jamaat', _jamaat1Controller)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: _buildTextField(
-                                  'Jamaat', _jamaat2Controller)),
-                        ],
-                      ),
+                      _buildDropdownField('Gender', _selectedGender, _genders,
+                          (value) => setState(() => _selectedGender = value)),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                              child: _buildTextField('City', _cityController)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: _buildTextField('Rank', _rankController)),
-                        ],
-                      ),
+                      _buildTextField('Age', _ageController,
+                          keyboardType: TextInputType.number),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                              child: _buildTextField(
-                                  'Year Joined', _yearController)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildDisplayField(
-                                'Is Active', isActive ? 'Yes' : 'No'),
-                          ),
-                        ],
-                      ),
+                      _buildJamiyatDropdown(),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDisplayField(
-                                'Is BGI Member', isBGIMember ? 'YES' : 'NO'),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child:
-                                _buildDisplayField('Designation', designation),
-                          ),
-                        ],
-                      ),
+                      _buildJamaatDropdown(),
+                      const SizedBox(height: 16),
+                      _buildTextField('Password', _passwordController,
+                          obscureText: true),
                       const SizedBox(height: 30),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('User Added Successfully')),
-                              );
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const MembersListScreen()),
-                              );
-                            }
-                          },
+                          onPressed: _isLoading ? null : _submitForm,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4A1C1C),
+                            disabledBackgroundColor: Colors.grey,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Add User',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  'Add Member',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -237,21 +275,15 @@ class _AddUserScreenState extends State<AddUserScreen> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller,
-      {TextInputType? keyboardType}) {
+      {TextInputType? keyboardType, bool obscureText = false, int? maxLength}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Text(
-        //   label,
-        //   style: const TextStyle(
-        //     color: Colors.grey,
-        //     fontSize: 12,
-        //   ),
-        // ),
-        const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          obscureText: obscureText,
+          maxLength: maxLength,
           decoration: InputDecoration(
             label: Text(label),
             filled: true,
@@ -276,12 +308,29 @@ class _AddUserScreenState extends State<AddUserScreen> {
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
           ),
           style: const TextStyle(
-            color: Colors.orange,
+            color: Colors.black,
             fontWeight: FontWeight.w500,
           ),
           validator: (value) {
-            if (value == null || value.isEmpty) {
+            if (label.contains('*') && (value == null || value.isEmpty)) {
               return 'This field is required';
+            }
+            if (label.contains('ITS ID') && value != null && value.isNotEmpty) {
+              // Validate ITS ID must be exactly 8 digits (same as login screen)
+              if (!RegExp(r'^\d+$').hasMatch(value)) {
+                return 'Only numerical values are allowed';
+              }
+              if (value.length < 8) {
+                return 'ITS ID must be exactly 8 digits';
+              }
+              if (value.length > 8) {
+                return 'ITS ID must be maximum 8 characters';
+              }
+            }
+            if (label.contains('Email') && value != null && value.isNotEmpty) {
+              if (!value.contains('@') || !value.contains('.')) {
+                return 'Please enter a valid email';
+              }
             }
             return null;
           },
@@ -290,32 +339,114 @@ class _AddUserScreenState extends State<AddUserScreen> {
     );
   }
 
-  Widget _buildDisplayField(String label, String value) {
+  Widget _buildDropdownField(String label, String? value, List<String> items,
+      Function(String?) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            value,
-            style: const TextStyle(
-              color: Colors.orange,
-              fontWeight: FontWeight.w500,
+        DropdownButtonFormField<String>(
+          value: value,
+          decoration: InputDecoration(
+            label: Text(label),
+            filled: true,
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
           ),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(item),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJamiyatDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          value: _selectedJamiyat,
+          decoration: InputDecoration(
+            label: const Text('Jamiyat'),
+            filled: true,
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+          ),
+          items: _jamiyats.map((JamiyatItem item) {
+            return DropdownMenuItem<String>(
+              value: item.name,
+              child: Text(item.displayName),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedJamiyat = value;
+              // Clear jamaat when jamiyat changes
+              _selectedJamaat = null;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJamaatDropdown() {
+    // Filter jamaats based on selected jamiyat if needed
+    final filteredJamaats = _jamaats;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          value: _selectedJamaat,
+          decoration: InputDecoration(
+            label: const Text('Jamaat'),
+            filled: true,
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+          ),
+          items: filteredJamaats.map((JamaatItem item) {
+            return DropdownMenuItem<String>(
+              value: item.name,
+              child: Text(item.displayName),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedJamaat = value;
+            });
+          },
         ),
       ],
     );
@@ -323,14 +454,12 @@ class _AddUserScreenState extends State<AddUserScreen> {
 
   @override
   void dispose() {
-    _memberNameController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _jamaat1Controller.dispose();
-    _jamaat2Controller.dispose();
-    _cityController.dispose();
-    _rankController.dispose();
-    _yearController.dispose();
+    _itsIdController.dispose();
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _contactController.dispose();
+    _ageController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 }

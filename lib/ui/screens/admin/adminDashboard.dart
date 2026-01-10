@@ -128,27 +128,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           MaterialPageRoute(
               builder: (context) => const AttendanceMiqaatScreen()),
         );
-      } else if (route == 4) {
-        // Check if user is Captain before allowing access to Create Miqaat
-        final userData = await _localStorage.getUserData();
-        final isCaptain = userData?.roles == 2;
-
-        if (!isCaptain) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Only Captain can create Miqaat'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CreateMiqaatScreen()),
-        );
       }
     }
 
@@ -167,7 +146,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           const SizedBox(height: 16),
           GridView.count(
-            crossAxisCount: 4, // number of columns
+            crossAxisCount: 3, // number of columns
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 16,
@@ -176,16 +155,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               _buildShortcutItem(Icons.supervised_user_circle_sharp, 'Members',
                   () => onShortCutTap(1)),
-              // _buildShortcutItem(
-              //     Icons.event_note_outlined, 'Lawazam', onShortCutTap),
               _buildShortcutItem(Icons.calendar_today_outlined, 'Miqaats',
                   () => onShortCutTap(2)),
               _buildShortcutItem(Icons.bar_chart_outlined, 'Attendance',
                   () => onShortCutTap(3)),
-              // _buildShortcutItem(
-              //     Icons.history, 'Attendance History', onShortCutTap),
-              _buildShortcutItem(Icons.add_circle_outline, 'Create Miqaat',
-                  () => onShortCutTap(4)),
             ],
           ),
         ],
@@ -228,7 +201,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 color: const Color(0xFF461D17),
                 fontWeight: FontWeight.w500,
               ),
-              maxLines: 2,
             ),
           ],
         ));

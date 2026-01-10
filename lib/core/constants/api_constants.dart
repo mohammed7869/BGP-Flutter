@@ -1,9 +1,10 @@
 class ApiConstants {
   // Production API base URL
   // Swagger UI documentation: https://bgp.baawanerp.com/SWAGGER/index.html
-   static const String baseUrl = 'https://bgp.baawanerp.com'; //Live URL
+  //  static const String baseUrl = 'https://bgp.baawanerp.com'; //Live URL
   // static const String baseUrl = 'http://192.168.141.207:5000';
-  // static const String baseUrl = 'http://192.168.1.4:5000'; //Local URL
+  // static const String baseUrl = 'http://192.168.31.97:5000'; //Local URL
+  static const String baseUrl = 'http://192.168.1.4:5000'; //Local URL
 //   static const String baseUrl = 'http://192.168.141.207:5000'; //Local URL
   // API Endpoints - Unified users table
   static const String login = '/api/1/login';
@@ -19,4 +20,7 @@ class ApiConstants {
 
   // API Endpoints - Users
   static const String getJamiyatJamaat = '/api/1/users/jamiyat-jamaat';
+  static const String createUser = '/api/1/users';
+  static const String approveMember = '/api/1/users';
+  static const String getMembersByJamaat = '/api/1/users/jamaat';
 }

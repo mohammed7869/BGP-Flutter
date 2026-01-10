@@ -129,9 +129,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
     // Otherwise, prepend the base URL
     final baseUrl = ApiConstants.baseUrl;
-    // Remove leading slash from profile path if present
-    final cleanPath =
-        profilePath.startsWith('/') ? profilePath.substring(1) : profilePath;
+    // Handle both old format (just filename) and new format (bgp_uploads/filename or bgp_uploads/profile/filename)
+    String cleanPath = profilePath.startsWith('/') 
+        ? profilePath.substring(1) 
+        : profilePath;
+    
+    // If it doesn't start with bgp_uploads/, it's an old format (just filename)
+    // Prepend bgp_uploads/profile/ to the path
+    if (!cleanPath.startsWith('bgp_uploads/')) {
+      cleanPath = 'bgp_uploads/profile/$cleanPath';
+    }
+    
     return '$baseUrl/$cleanPath';
   }
 
@@ -153,21 +161,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ],
         ),
         child: ClipOval(
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(),
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
-                ),
-              );
-            },
+          child: Container(
+            color: Colors.grey[200],
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(),
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                );
+              },
+            ),
           ),
         ),
       );
