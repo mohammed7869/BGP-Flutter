@@ -24,6 +24,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
   bool _isLoading = false;
   bool _isCaptain = false;
+  bool _isCheckingRole = true;
   String? _userJamaat;
 
   @override
@@ -34,6 +35,15 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
   Future<void> _initializeData() async {
     await _checkUserRole();
+    
+    // Only proceed if user is Captain
+    if (!_isCaptain) {
+      setState(() {
+        _isCheckingRole = false;
+      });
+      return;
+    }
+    
     if (widget.miqaat != null) {
       _loadEnrolledMembers();
     } else {
@@ -46,6 +56,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
     setState(() {
       _isCaptain = userData?.roles == 2; // Captain role = 2
       _userJamaat = userData?.jamaat;
+      _isCheckingRole = false;
     });
   }
 
@@ -177,9 +188,46 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
                   // Members List
                   Expanded(
-                    child: _isLoading
+                    child: _isCheckingRole
                         ? const Center(child: CircularProgressIndicator())
-                        : widget.miqaat != null
+                        : !_isCaptain
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.block,
+                                        size: 64,
+                                        color: Colors.red[300],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Only Captains can view this page',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'You do not have permission to access the members list.',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : _isLoading
+                                ? const Center(child: CircularProgressIndicator())
+                                : widget.miqaat != null
                             ? (_enrolledMembers.isEmpty
                                 ? const Center(
                                     child: Padding(

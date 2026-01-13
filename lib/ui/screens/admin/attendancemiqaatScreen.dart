@@ -2,6 +2,7 @@ import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/miqaatAttendanceScreen.dart';
 import 'package:flutter/material.dart';
 
 class AttendanceMiqaatScreen extends StatefulWidget {
@@ -28,17 +29,6 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     super.initState();
     selectedFilter = widget.initialFilter ?? 'Miqaats';
     _loadMiqaats();
-
-    // Show development message if opened with Attendance History filter
-    if (widget.initialFilter == 'Attendance History') {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showDevelopmentMessage(context);
-        // Switch back to Miqaats after showing message
-        setState(() {
-          selectedFilter = 'Miqaats';
-        });
-      });
-    }
   }
 
   Future<void> _loadMiqaats() async {
@@ -124,22 +114,6 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     );
   }
 
-  void _showDevelopmentMessage(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Under Development'),
-        content: const Text('This page is under development.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +240,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                                           itemCount: _miqaats.length,
                                           itemBuilder: (context, index) {
                                             return _buildMiqaatCard(
-                                                _miqaats[index]);
+                                                _miqaats[index], context);
                                           },
                                         ),
                                       ),
@@ -307,14 +281,9 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     final isSelected = selectedFilter == label;
     return GestureDetector(
       onTap: () {
-        if (label == 'Attendance History') {
-          // Show development message for Attendance History
-          _showDevelopmentMessage(context);
-        } else {
-          setState(() {
-            selectedFilter = label;
-          });
-        }
+        setState(() {
+          selectedFilter = label;
+        });
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -359,7 +328,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     return '$day $month $year';
   }
 
-  Widget _buildMiqaatCard(Miqaat miqaat) {
+  Widget _buildMiqaatCard(Miqaat miqaat, BuildContext context) {
     // Format date for display
     final fromDateStr = _formatDate(miqaat.fromDate);
     final tillDateStr = _formatDate(miqaat.tillDate);
@@ -384,110 +353,125 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
         statusText = 'Pending';
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left side - Event details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date
-                Text(
-                  dateDisplay,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Title
-                Text(
-                  miqaat.miqaatName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // Location (Jamaat)
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: Colors.orange,
+    return GestureDetector(
+      onTap: () async {
+        // Check if user is a captain (roles == 2)
+        final user = await _localStorage.getUserData();
+        if (user != null && user.roles == 2 && miqaat.adminApproval.toLowerCase() == 'approved') {
+          // Navigate to attendance marking screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MiqaatAttendanceScreen(miqaat: miqaat),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!, width: 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left side - Event details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Date
+                  Text(
+                    dateDisplay,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        miqaat.jamaat,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  // Title
+                  Text(
+                    miqaat.miqaatName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Location (Jamaat)
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Colors.orange,
                       ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          miqaat.jamaat,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // Jamiyat
+                  Text(
+                    miqaat.jamiyat,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                // Jamiyat
-                Text(
-                  miqaat.jamiyat,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                    fontStyle: FontStyle.italic,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Right side - Status badge
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  miqaat.volunteerLimit.toString(),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+            // Right side - Status badge
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: statusColor,
+                shape: BoxShape.circle,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    miqaat.volunteerLimit.toString(),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  statusText,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 2),
+                  Text(
+                    statusText,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
