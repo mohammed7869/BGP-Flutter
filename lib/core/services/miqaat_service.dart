@@ -450,14 +450,16 @@ class MiqaatService {
     }
   }
 
-  Future<List<EnrolledMember>> getApprovedMembersForAttendance(int miqaatId) async {
+  Future<List<EnrolledMember>> getApprovedMembersForAttendance(int miqaatId,
+      {int day = 1}) async {
     try {
       final token = await _localStorage.getToken();
       if (token == null) {
         throw Exception('User not authenticated');
       }
 
-      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getEnrolledMembers}/$miqaatId/approved-members-for-attendance');
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}${ApiConstants.getEnrolledMembers}/$miqaatId/approved-members-for-attendance?day=$day');
 
       final response = await http
           .get(
@@ -598,6 +600,7 @@ class MiqaatService {
 
   Future<void> markAttendanceBatch({
     required int miqaatId,
+    required int day,
     required List<int> memberIds,
   }) async {
     try {
@@ -609,6 +612,7 @@ class MiqaatService {
       final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateMemberMiqaatStatus}/$miqaatId/mark-attendance');
 
       final requestBody = {
+        'day': day,
         'memberIds': memberIds,
       };
 
@@ -677,6 +681,7 @@ class Miqaat {
   final String jamiyat;
   final DateTime fromDate;
   final DateTime tillDate;
+  final int miqaatDays;
   final int volunteerLimit;
   final String? aboutMiqaat;
   final String adminApproval;
@@ -693,6 +698,7 @@ class Miqaat {
     required this.jamiyat,
     required this.fromDate,
     required this.tillDate,
+    required this.miqaatDays,
     required this.volunteerLimit,
     this.aboutMiqaat,
     required this.adminApproval,
@@ -704,13 +710,20 @@ class Miqaat {
   });
 
   factory Miqaat.fromJson(Map<String, dynamic> json) {
+    final from = DateTime.parse(json['fromDate'] as String);
+    final till = DateTime.parse(json['tillDate'] as String);
+    final computedDays = till.difference(from).inDays + 1;
+
     return Miqaat(
       id: json['id'] as int? ?? 0,
       miqaatName: json['miqaatName'] as String? ?? '',
       jamaat: json['jamaat'] as String? ?? '',
       jamiyat: json['jamiyat'] as String? ?? '',
-      fromDate: DateTime.parse(json['fromDate'] as String),
-      tillDate: DateTime.parse(json['tillDate'] as String),
+      fromDate: from,
+      tillDate: till,
+      miqaatDays: (json['miqaatDays'] as num?)?.toInt() ??
+          (json['miqaat_days'] as num?)?.toInt() ??
+          (computedDays < 1 ? 1 : computedDays),
       volunteerLimit: json['volunteerLimit'] as int? ?? 0,
       aboutMiqaat: json['aboutMiqaat'] as String?,
       adminApproval: json['adminApproval'] as String? ?? 'Pending',
@@ -724,6 +737,8 @@ class Miqaat {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
   }
+
+  String get durationLabel => '$miqaatDays day${miqaatDays == 1 ? '' : 's'}';
 
   String get formattedDateRange {
     final from = _formatDate(fromDate);

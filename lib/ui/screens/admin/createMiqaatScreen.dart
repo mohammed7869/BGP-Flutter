@@ -149,6 +149,19 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Builder(builder: (context) {
+                final days = _calculateMiqaatDaysInclusive();
+                if (days == null) return const SizedBox.shrink();
+                return Text(
+                  'Miqaat Duration: ${_formatMiqaatDaysLabel(days)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                );
+              }),
               const SizedBox(height: 16),
               _buildTextField('Volunteer Limit', _volunteerLimitController,
                   keyboardType: TextInputType.number),
@@ -477,6 +490,16 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
       }
     }
     return null;
+  }
+
+  int? _calculateMiqaatDaysInclusive() {
+    if (_fromDate == null || _tillDate == null) return null;
+    if (_tillDate!.isBefore(_fromDate!)) return null;
+    return _tillDate!.difference(_fromDate!).inDays + 1;
+  }
+
+  String _formatMiqaatDaysLabel(int days) {
+    return '$days day${days == 1 ? '' : 's'}';
   }
 
   Future<void> _createMiqaat() async {

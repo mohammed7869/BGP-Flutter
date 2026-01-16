@@ -335,6 +335,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     final dateDisplay = fromDateStr == tillDateStr
         ? fromDateStr
         : '$fromDateStr - $tillDateStr';
+    final durationDisplay = '${miqaat.durationLabel}';
 
     // Get approval status color
     Color statusColor;
@@ -385,7 +386,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                 children: [
                   // Date
                   Text(
-                    dateDisplay,
+                    '$dateDisplay • $durationDisplay',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],

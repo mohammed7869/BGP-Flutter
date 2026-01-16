@@ -1,5 +1,4 @@
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
-import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:flutter/material.dart';
 
 class MiqaatAttendanceScreen extends StatefulWidget {
@@ -14,12 +13,12 @@ class MiqaatAttendanceScreen extends StatefulWidget {
 
 class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   final MiqaatService _miqaatService = MiqaatService();
-  final LocalStorageService _localStorage = LocalStorageService();
   List<EnrolledMember> _members = [];
-  Set<int> _selectedMemberIds = {};
+  final Set<int> _selectedMemberIds = {};
   bool _isLoading = true;
   bool _isMarkingAttendance = false;
   String? _errorMessage;
+  int _selectedDay = 1;
 
   @override
   void initState() {
@@ -34,7 +33,10 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
     });
 
     try {
-      final members = await _miqaatService.getApprovedMembersForAttendance(widget.miqaat.id);
+      final members = await _miqaatService.getApprovedMembersForAttendance(
+        widget.miqaat.id,
+        day: _selectedDay,
+      );
       setState(() {
         _members = members;
         _isLoading = false;
@@ -70,6 +72,7 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
     try {
       await _miqaatService.markAttendanceBatch(
         miqaatId: widget.miqaat.id,
+        day: _selectedDay,
         memberIds: _selectedMemberIds.toList(),
       );
 
@@ -172,6 +175,40 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                             color: Colors.grey[600],
                           ),
                         ),
+                        if (widget.miqaat.miqaatDays > 1) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Text(
+                                'Day:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              DropdownButton<int>(
+                                value: _selectedDay,
+                                items: List.generate(
+                                  widget.miqaat.miqaatDays,
+                                  (i) => DropdownMenuItem(
+                                    value: i + 1,
+                                    child: Text('Day ${i + 1}'),
+                                  ),
+                                ),
+                                onChanged: (value) async {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _selectedDay = value;
+                                    _selectedMemberIds.clear();
+                                  });
+                                  await _loadMembers();
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

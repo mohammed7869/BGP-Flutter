@@ -270,7 +270,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     miqaat: miqaat,
                     title: miqaat.miqaatName,
                     dateRange:
-                        'FROM ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)}',
+                        'FROM ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)} (${miqaat.durationLabel})',
                     location: '${miqaat.jamaat}, ${miqaat.jamiyat}',
                   ),
                 )),
@@ -535,7 +535,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Date: ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)}',
+                'Date: ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)} (${miqaat.durationLabel})',
                 style: const TextStyle(fontSize: 14),
               ),
               if (miqaat.aboutMiqaat != null &&
