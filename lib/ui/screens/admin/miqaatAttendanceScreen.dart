@@ -1,5 +1,6 @@
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:flutter/material.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
 
 class MiqaatAttendanceScreen extends StatefulWidget {
   final Miqaat miqaat;
@@ -19,6 +20,30 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   bool _isMarkingAttendance = false;
   String? _errorMessage;
   int _selectedDay = 1;
+
+  DateTime _getSelectedDayDate() {
+    return widget.miqaat.fromDate.add(Duration(days: _selectedDay - 1));
+  }
+
+  String _formatShortDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final day = date.day.toString().padLeft(2, '0');
+    final month = months[date.month - 1];
+    return '$day $month ${date.year}';
+  }
 
   @override
   void initState() {
@@ -194,7 +219,9 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                                   widget.miqaat.miqaatDays,
                                   (i) => DropdownMenuItem(
                                     value: i + 1,
-                                    child: Text('Day ${i + 1}'),
+                                    child: Text(
+                                      'Day ${i + 1} - ${_formatShortDate(widget.miqaat.fromDate.add(Duration(days: i)))}',
+                                    ),
                                   ),
                                 ),
                                 onChanged: (value) async {
@@ -205,6 +232,15 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                                   });
                                   await _loadMembers();
                                 },
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _formatShortDate(_getSelectedDayDate()),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ],
                           ),
@@ -327,6 +363,7 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   }
 
   Widget _buildMemberCard(EnrolledMember member, bool isSelected) {
+    final isAttended = member.isAttended == true;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -341,62 +378,80 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () {
-              _toggleMemberSelection(member.id);
-            },
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected
-                      ? const Color(0xFF4A1C1C)
-                      : Colors.grey[400]!,
-                  width: 2,
-                ),
-                color: Colors.white,
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF4A1C1C),
-                        ),
+            onTap: isAttended ? null : () => _toggleMemberSelection(member.id),
+            child: isAttended
+                ? const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 26,
+                  )
+                : Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF4A1C1C)
+                            : Colors.grey[700]!,
+                        width: 2,
                       ),
-                    )
-                  : null,
-            ),
+                      color: Colors.white,
+                    ),
+                    child: isSelected
+                        ? Center(
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFF4A1C1C),
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  member.fullName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (member.itsId != null && member.itsId!.isNotEmpty)
-                  Text(
-                    'ITS ID: ${member.itsId}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberMiqaatHistoryScreen(
+                      memberId: member.id,
+                      fullName: member.fullName,
+                      itsId: member.itsId,
                     ),
                   ),
-              ],
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    member.fullName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (member.itsId != null && member.itsId!.isNotEmpty)
+                    Text(
+                      'ITS ID: ${member.itsId}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-          if (member.isAttended == true)
+          if (isAttended)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(

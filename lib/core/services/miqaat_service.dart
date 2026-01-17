@@ -672,6 +672,66 @@ class MiqaatService {
       rethrow;
     }
   }
+
+  Future<MemberMiqaatAttendanceHistory> getMemberAttendanceHistory(
+      int memberId) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}${ApiConstants.getEnrolledMembers}/member/$memberId/attendance-history');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+        return MemberMiqaatAttendanceHistory.fromJson(jsonResponse);
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Only Captains can view member attendance history');
+      } else {
+        String errorMessage = 'Failed to fetch attendance history.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          }
+        } catch (_) {}
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception(
+              'Unable to connect to server. Please check:\n1. API is running\n2. Correct IP address in api_constants.dart\n3. Phone and laptop on same Wi-Fi');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
 }
 
 class Miqaat {
@@ -874,3 +934,69 @@ class EnrolledMember {
   }
 }
 
+class MemberMiqaatAttendanceHistory {
+  final int memberId;
+  final String fullName;
+  final String? itsId;
+  final int totalPoints;
+  final List<MemberMiqaatAttendanceItem> items;
+
+  MemberMiqaatAttendanceHistory({
+    required this.memberId,
+    required this.fullName,
+    this.itsId,
+    required this.totalPoints,
+    required this.items,
+  });
+
+  factory MemberMiqaatAttendanceHistory.fromJson(Map<String, dynamic> json) {
+    return MemberMiqaatAttendanceHistory(
+      memberId: (json['memberId'] as num?)?.toInt() ?? 0,
+      fullName: json['fullName'] as String? ?? '',
+      itsId: json['itsId'] as String?,
+      totalPoints: (json['totalPoints'] as num?)?.toInt() ?? 0,
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => MemberMiqaatAttendanceItem.fromJson(
+                  e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class MemberMiqaatAttendanceItem {
+  final int miqaatId;
+  final String miqaatName;
+  final DateTime fromDate;
+  final DateTime tillDate;
+  final int miqaatDays;
+  final int miqaatDay;
+  final bool isAttended;
+  final int points;
+
+  MemberMiqaatAttendanceItem({
+    required this.miqaatId,
+    required this.miqaatName,
+    required this.fromDate,
+    required this.tillDate,
+    required this.miqaatDays,
+    required this.miqaatDay,
+    required this.isAttended,
+    required this.points,
+  });
+
+  factory MemberMiqaatAttendanceItem.fromJson(Map<String, dynamic> json) {
+    return MemberMiqaatAttendanceItem(
+      miqaatId: (json['miqaatId'] as num?)?.toInt() ?? 0,
+      miqaatName: json['miqaatName'] as String? ?? '',
+      fromDate: DateTime.parse(json['fromDate'] as String),
+      tillDate: DateTime.parse(json['tillDate'] as String),
+      miqaatDays: (json['miqaatDays'] as num?)?.toInt() ?? 1,
+      miqaatDay: (json['miqaatDay'] as num?)?.toInt() ?? 1,
+      isAttended: json['isAttended'] as bool? ?? false,
+      points: (json['points'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  DateTime get dayDate => fromDate.add(Duration(days: miqaatDay - 1));
+}
