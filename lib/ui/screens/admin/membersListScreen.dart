@@ -138,15 +138,21 @@ class _MembersListScreenState extends State<MembersListScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(
-                            widget.miqaat != null
-                                ? 'Enrolled Members - ${widget.miqaat!.miqaatName}'
-                                : 'Members List',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.miqaat != null
+                                    ? 'Approved Enrolled members to mark attendance'
+                                    : 'Members List',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                             
+                            ],
                           ),
                         ),
                         if (_isCaptain && widget.miqaat == null)
@@ -183,6 +189,11 @@ class _MembersListScreenState extends State<MembersListScreen> {
                       ],
                     ),
                   ),
+                  if (widget.miqaat != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildMiqaatInfoCard(widget.miqaat!),
+                    ),
 
                   const SizedBox(height: 20),
 
@@ -281,6 +292,84 @@ class _MembersListScreenState extends State<MembersListScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final day = date.day.toString().padLeft(2, '0');
+    final month = months[date.month - 1];
+    final year = date.year;
+    return '$day $month $year';
+  }
+
+  Widget _buildMiqaatInfoCard(Miqaat miqaat) {
+    final fromDateStr = _formatDate(miqaat.fromDate);
+    final tillDateStr = _formatDate(miqaat.tillDate);
+    final dateDisplay = fromDateStr == tillDateStr
+        ? fromDateStr
+        : '$fromDateStr - $tillDateStr';
+    final durationDisplay = miqaat.durationLabel;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Miqaat: ${miqaat.miqaatName}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Date: $dateDisplay',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'No. of days: $durationDisplay',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Location: ${miqaat.jamaat}, ${miqaat.jamiyat}',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[700],
             ),
           ),
         ],

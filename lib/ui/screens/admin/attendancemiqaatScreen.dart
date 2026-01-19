@@ -16,7 +16,7 @@ class AttendanceMiqaatScreen extends StatefulWidget {
 }
 
 class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
-  late String selectedFilter;
+  bool _isCaptain = false;
 
   final MiqaatService _miqaatService = MiqaatService();
   final LocalStorageService _localStorage = LocalStorageService();
@@ -27,7 +27,6 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
   @override
   void initState() {
     super.initState();
-    selectedFilter = widget.initialFilter ?? 'Miqaats';
     _loadMiqaats();
   }
 
@@ -40,6 +39,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
     try {
       final user = await _localStorage.getUserData();
       final miqaats = await _miqaatService.getAllMiqaats();
+      final isCaptain = user != null && user.roles == 2;
 
       // Show only miqaats of the logged-in user's jamaat (for both members and captains)
       List<Miqaat> filtered = miqaats;
@@ -52,58 +52,17 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
 
       setState(() {
         _miqaats = filtered;
+        _isCaptain = isCaptain;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
+        _isCaptain = false;
       });
     }
   }
-
-  final List<Map<String, dynamic>> attendanceHistory = [
-    {
-      'dateRange': 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
-      'eventName': 'Urs Mubarak Ayyam',
-      'totalEnrolled': 1000,
-      'totalApproved': 500,
-      'totalPresent': 480,
-      'absentCount': 50,
-    },
-    {
-      'dateRange': 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
-      'eventName': 'Urs Mubarak Ayyam',
-      'totalEnrolled': 1000,
-      'totalApproved': 500,
-      'totalPresent': 480,
-      'absentCount': 50,
-    },
-    {
-      'dateRange': 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
-      'eventName': 'Urs Mubarak Ayyam',
-      'totalEnrolled': 1000,
-      'totalApproved': 500,
-      'totalPresent': 480,
-      'absentCount': 50,
-    },
-    {
-      'dateRange': 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
-      'eventName': 'Urs Mubarak Ayyam',
-      'totalEnrolled': 1000,
-      'totalApproved': 500,
-      'totalPresent': 480,
-      'absentCount': 50,
-    },
-    {
-      'dateRange': 'ENROLLED FROM 2ND OCT - 9TH OCT 2023',
-      'eventName': 'Urs Mubarak Ayyam',
-      'totalEnrolled': 1000,
-      'totalApproved': 500,
-      'totalPresent': 480,
-      'absentCount': 50,
-    },
-  ];
 
   void _handleBackNavigation(BuildContext context) {
     // Always navigate to Dashboard to prevent going back to CreateMiqaatScreen
@@ -177,95 +136,56 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                       ),
                     ),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          _buildFilterChip('Miqaats'),
-                          const SizedBox(width: 8),
-                          _buildFilterChip('Attendance History'),
-                          // const SizedBox(width: 8),
-                          // _buildFilterChip('Rejected'),
-                          // const SizedBox(width: 8),
-                          // _buildFilterChip('Pending'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Miqaat Cards List
-
-                    if (selectedFilter == 'Miqaats') ...[
-                      Expanded(
-                        child: _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(),
-                              )
-                            : _errorMessage != null
-                                ? Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          _errorMessage!,
-                                          style: const TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 14,
-                                          ),
-                                          textAlign: TextAlign.center,
+                    Expanded(
+                      child: _isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(),
+                            )
+                          : _errorMessage != null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _errorMessage!,
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 14,
                                         ),
-                                        const SizedBox(height: 16),
-                                        ElevatedButton(
-                                          onPressed: _loadMiqaats,
-                                          child: const Text('Retry'),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : _miqaats.isEmpty
-                                    ? const Center(
-                                        child: Text(
-                                          'No miqaats found',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      )
-                                    : RefreshIndicator(
-                                        onRefresh: _loadMiqaats,
-                                        child: ListView.builder(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 20),
-                                          itemCount: _miqaats.length,
-                                          itemBuilder: (context, index) {
-                                            return _buildMiqaatCard(
-                                                _miqaats[index], context);
-                                          },
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: _loadMiqaats,
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _miqaats.isEmpty
+                                  ? const Center(
+                                      child: Text(
+                                        'No miqaats found',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey,
                                         ),
                                       ),
-                      ),
-                    ],
-
-                    if (selectedFilter == 'Attendance History') ...[
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: attendanceHistory.length,
-                          itemBuilder: (context, index) {
-                            final item = attendanceHistory[index];
-                            return _buildAttendanceCard(
-                              dateRange: item['dateRange'],
-                              eventName: item['eventName'],
-                              totalEnrolled: item['totalEnrolled'],
-                              totalApproved: item['totalApproved'],
-                              totalPresent: item['totalPresent'],
-                              absentCount: item['absentCount'],
-                            );
-                          },
-                        ),
-                      ),
-                    ]
+                                    )
+                                  : RefreshIndicator(
+                                      onRefresh: _loadMiqaats,
+                                      child: ListView.builder(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20),
+                                        itemCount: _miqaats.length,
+                                        itemBuilder: (context, index) {
+                                          return _buildMiqaatCard(
+                                              _miqaats[index], context);
+                                        },
+                                      ),
+                                    ),
+                    )
                   ],
                 ),
               ),
@@ -273,36 +193,6 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
           ],
         ),
         bottomNavigationBar: const CustomBottomNavBarCaptain(),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label) {
-    final isSelected = selectedFilter == label;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedFilter = label;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF4A1C1C) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFF4A1C1C),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
       ),
     );
   }
@@ -337,21 +227,18 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
         : '$fromDateStr - $tillDateStr';
     final durationDisplay = '${miqaat.durationLabel}';
 
-    // Get approval status color
-    Color statusColor;
-    String statusText;
-    switch (miqaat.adminApproval.toLowerCase()) {
-      case 'approved':
-        statusColor = Colors.green;
-        statusText = 'Approved';
-        break;
-      case 'rejected':
-        statusColor = Colors.red;
-        statusText = 'Rejected';
-        break;
-      default:
-        statusColor = Colors.orange;
-        statusText = 'Pending';
+    // Get approval status style (captains only)
+    String statusText = 'Pending';
+    Color backgroundColor = const Color(0xFFFFF3E0);
+    Color textColor = const Color(0xFFE65100);
+    if (miqaat.adminApproval.toLowerCase() == 'approved') {
+      statusText = 'Approved';
+      backgroundColor = Colors.green;
+      textColor = Colors.white;
+    } else if (miqaat.adminApproval.toLowerCase() == 'rejected') {
+      statusText = 'Rejected';
+      backgroundColor = Colors.red;
+      textColor = Colors.white;
     }
 
     return GestureDetector(
@@ -415,7 +302,9 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          miqaat.jamaat,
+                          _isCaptain
+                              ? '${miqaat.jamaat} (${miqaat.jamiyat})'
+                              : miqaat.jamaat,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -426,177 +315,56 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  // Jamiyat
-                  Text(
-                    miqaat.jamiyat,
+                  if (!_isCaptain) ...[
+                    const SizedBox(height: 4),
+                    // Jamiyat
+                    Text(
+                      miqaat.jamiyat,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                  if (_isCaptain) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Volunteer Limit: ${miqaat.volunteerLimit}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (_isCaptain)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, top: 2),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    statusText,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
-                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-
-            // Right side - Status badge
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: statusColor,
-                shape: BoxShape.circle,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    miqaat.volunteerLimit.toString(),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    statusText,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAttendanceCard({
-    required String dateRange,
-    required String eventName,
-    required int totalEnrolled,
-    required int totalApproved,
-    required int totalPresent,
-    required int absentCount,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left side - Event details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date Range
-                Text(
-                  dateRange,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.orange,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Event Name
-                Text(
-                  eventName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Statistics
-                _buildStatRow('Total People Enrolled', totalEnrolled),
-                const SizedBox(height: 6),
-                _buildStatRow('Total People Approved', totalApproved),
-                const SizedBox(height: 6),
-                _buildStatRow('Total People Present', totalPresent),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Right side - Absent badge
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.orange,
-              shape: BoxShape.circle,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  absentCount.toString(),
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Absent',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, int value) {
-    return Row(
-      children: [
-        Text(
-          '$label - ',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[700],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          value.toString(),
-          style: const TextStyle(
-            fontSize: 13,
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
 }

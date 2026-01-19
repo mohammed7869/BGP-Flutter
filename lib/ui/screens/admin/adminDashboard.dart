@@ -4,6 +4,7 @@ import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/createMiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/membersListScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/pointsScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBar.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppDrawer.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
@@ -125,8 +126,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       } else if (route == 3) {
         Navigator.push(
           context,
-          MaterialPageRoute(
-              builder: (context) => const AttendanceMiqaatScreen()),
+          MaterialPageRoute(builder: (context) => const PointsScreen()),
         );
       }
     }
@@ -157,7 +157,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   () => onShortCutTap(1)),
               _buildShortcutItem(Icons.calendar_today_outlined, 'Miqaats',
                   () => onShortCutTap(2)),
-              _buildShortcutItem(Icons.bar_chart_outlined, 'Attendance',
+              _buildShortcutItem(Icons.bar_chart_outlined, 'Points',
                   () => onShortCutTap(3)),
             ],
           ),
@@ -401,7 +401,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       final finalStatus =
                           miqaat.finalStatus?.toLowerCase() ?? '';
 
-                      String buttonText = 'View Details';
+                      String buttonText = isCaptain
+                          ? 'View Enrolled Members'
+                          : 'Approve / Reject miqaat';
                       bool enableTap = true;
 
                       if (!isCaptain) {
@@ -519,77 +521,148 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _showMiqaatActionDialog(Miqaat miqaat) async {
     final userData = await _localStorage.getUserData();
     final isCaptain = userData?.roles == 2;
+    final totalDays = miqaat.miqaatDays;
+    final Set<int> selectedDays = {1};
 
     return showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(miqaat.miqaatName),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Location: ${miqaat.jamaat}, ${miqaat.jamiyat}',
-                style: const TextStyle(fontSize: 14),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(miqaat.miqaatName),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Location: ${miqaat.jamaat}, ${miqaat.jamiyat}',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Date: ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)} (${miqaat.durationLabel})',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  if (miqaat.aboutMiqaat != null &&
+                      miqaat.aboutMiqaat!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'About: ${miqaat.aboutMiqaat}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                  if (!isCaptain) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Would you like to Approve or Reject this miqaat?',
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    if (totalDays > 1) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Select day(s) for enrollment',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(totalDays, (index) {
+                          final dayNumber = index + 1;
+                          final dayDate = miqaat.fromDate
+                              .add(Duration(days: index));
+                          final label =
+                              'Day $dayNumber (${_formatDate(dayDate)})';
+                          return FilterChip(
+                            label: Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: selectedDays.contains(dayNumber)
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                            ),
+                            selected: selectedDays.contains(dayNumber),
+                            selectedColor: const Color(0xFF4A1C1C),
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                if (selected) {
+                                  selectedDays.add(dayNumber);
+                                } else {
+                                  if (selectedDays.length > 1) {
+                                    selectedDays.remove(dayNumber);
+                                  }
+                                }
+                              });
+                            },
+                          );
+                        }),
+                      ),
+                    ],
+                  ],
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Date: ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)} (${miqaat.durationLabel})',
-                style: const TextStyle(fontSize: 14),
-              ),
-              if (miqaat.aboutMiqaat != null &&
-                  miqaat.aboutMiqaat!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'About: ${miqaat.aboutMiqaat}',
-                  style: const TextStyle(fontSize: 14),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
                 ),
+                if (!isCaptain) ...[
+                  TextButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      final days = totalDays > 1
+                          ? (selectedDays.toList()..sort())
+                          : null;
+                      await _updateMiqaatStatus(
+                        miqaat,
+                        'Rejected',
+                        days: days,
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                    child: const Text('Reject'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      final days = totalDays > 1
+                          ? (selectedDays.toList()..sort())
+                          : null;
+                      await _updateMiqaatStatus(
+                        miqaat,
+                        'Approved',
+                        days: days,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Approved'),
+                  ),
+                ],
               ],
-              if (!isCaptain) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Would you like to Enroll or Reject this miqaat?',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-            if (!isCaptain) ...[
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await _updateMiqaatStatus(miqaat, 'Rejected');
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text('Reject'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await _updateMiqaatStatus(miqaat, 'Approved');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Enroll'),
-              ),
-            ],
-          ],
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> _updateMiqaatStatus(Miqaat miqaat, String status) async {
+  Future<void> _updateMiqaatStatus(
+    Miqaat miqaat,
+    String status, {
+    List<int>? days,
+  }) async {
     try {
       final userData = await _localStorage.getUserData();
       if (userData == null || userData.id == 0) {
@@ -600,6 +673,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         memberId: userData.id,
         miqaatId: miqaat.id,
         status: status,
+        days: days,
       );
 
       if (mounted) {
