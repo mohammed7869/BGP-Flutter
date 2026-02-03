@@ -9,12 +9,14 @@ class MemberMiqaatHistoryScreen extends StatefulWidget {
   final int memberId;
   final String fullName;
   final String? itsId;
+  final int? miqaatId;
 
   const MemberMiqaatHistoryScreen({
     Key? key,
     required this.memberId,
     required this.fullName,
     this.itsId,
+    this.miqaatId,
   }) : super(key: key);
 
   @override
@@ -69,7 +71,25 @@ class _MemberMiqaatHistoryScreenState extends State<MemberMiqaatHistoryScreen> {
       }
 
       final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      final history = MemberMiqaatAttendanceHistoryDto.fromJson(jsonResponse);
+      var history = MemberMiqaatAttendanceHistoryDto.fromJson(jsonResponse);
+
+      if (widget.miqaatId != null) {
+        final filteredItems = history.items
+            .where((item) => item.miqaatId == widget.miqaatId)
+            .toList();
+
+        final filteredPoints =
+            filteredItems.fold<int>(0, (sum, item) => sum + item.points);
+
+        history = MemberMiqaatAttendanceHistoryDto(
+          memberId: history.memberId,
+          fullName: history.fullName,
+          itsId: history.itsId,
+          totalPoints: filteredPoints,
+          items: filteredItems,
+        );
+      }
+
       if (!mounted) return;
       setState(() {
         _history = history;

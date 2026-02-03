@@ -752,6 +752,10 @@ class Miqaat {
   final String captainName;
   final DateTime createdAt;
   final DateTime updatedAt;
+  // Report fields
+  final String? miqaatImage1;
+  final String? miqaatImage2;
+  final String? notes;
 
   Miqaat({
     required this.id,
@@ -769,6 +773,9 @@ class Miqaat {
     required this.captainName,
     required this.createdAt,
     required this.updatedAt,
+    this.miqaatImage1,
+    this.miqaatImage2,
+    this.notes,
   });
 
   factory Miqaat.fromJson(Map<String, dynamic> json) {
@@ -797,6 +804,9 @@ class Miqaat {
       captainName: json['captainName'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      miqaatImage1: json['miqaatImage1'] as String?,
+      miqaatImage2: json['miqaatImage2'] as String?,
+      notes: json['notes'] as String?,
     );
   }
 

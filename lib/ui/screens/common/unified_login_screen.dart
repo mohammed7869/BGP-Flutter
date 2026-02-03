@@ -1,6 +1,7 @@
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
+import 'package:burhaniguardsapp/ui/screens/common/privacyPolicyScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
 import 'package:burhaniguardsapp/ui/widgets/baawan_erp_dialog.dart';
 import 'package:flutter/material.dart';
@@ -339,43 +340,81 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     );
   }
 
-  Widget _buildFooter() {
-    return Column(
-      children: [
-        Text(
-          'Powered By',
-          style: const TextStyle(
-            fontSize: 11,
+ Widget _buildFooter() {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        'Powered By',
+        style: TextStyle(
+          fontSize: 11,
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 4),
+
+      InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
+              return const BaawanErpDialog();
+            },
+          );
+        },
+        child: const Text(
+          'Baawan.com',
+          style: TextStyle(
+            fontSize: 20,
             color: Colors.white,
-            fontWeight: FontWeight.w500,
+            decoration: TextDecoration.underline,
+            decorationColor: Colors.white,
+            decorationThickness: 1.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: () {
-            showDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (BuildContext dialogContext) {
-                return const BaawanErpDialog();
-              },
-            );
-          },
-          child: const Text(
-            'Baawan.com',
-            style: TextStyle(
-              fontSize: 20,
-              color: Colors.white,
-              decoration: TextDecoration.underline,
-              decorationColor: Colors.white,
-              decorationThickness: 1.5,
-              fontWeight: FontWeight.w600,
+      ),
+
+      const SizedBox(height: 8),
+
+      const Text(
+        'For more info, please read',
+        style: TextStyle(
+          fontSize: 10,
+          color: Colors.white70,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+
+      const SizedBox(height: 4),
+
+      InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PrivacyPolicyScreen(),
             ),
+          );
+        },
+        child: const Text(
+          'Privacy Policy',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.white,
+            decoration: TextDecoration.underline,
+            decorationColor: Colors.white,
+            decorationThickness: 1.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
 
   void _showPasswordChangeDialog(String memberName, String itsNumber) {
     showDialog(

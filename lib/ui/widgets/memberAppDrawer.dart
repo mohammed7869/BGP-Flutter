@@ -1,4 +1,5 @@
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/common/privacyPolicyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/memberDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/user/miqaatListScreen.dart';
@@ -172,6 +173,20 @@ class AppDrawer extends StatelessWidget {
                               builder: (_) => const EnrolledMiqaatScreen()),
                         );
                         // Navigate to Saved Events
+                      },
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy Policy',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PrivacyPolicyScreen(),
+                          ),
+                        );
                       },
                     ),
                   ],

@@ -3,6 +3,7 @@ import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/miqaatAttendanceScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
 import 'package:flutter/material.dart';
 
 class AttendanceMiqaatScreen extends StatefulWidget {
@@ -243,14 +244,29 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
 
     return GestureDetector(
       onTap: () async {
-        // Check if user is a captain (roles == 2)
         final user = await _localStorage.getUserData();
-        if (user != null && user.roles == 2 && miqaat.adminApproval.toLowerCase() == 'approved') {
-          // Navigate to attendance marking screen
+        if (user == null) return;
+
+        if (user.roles == 2 &&
+            miqaat.adminApproval.toLowerCase() == 'approved') {
+          // Navigate to attendance marking screen (Captain)
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => MiqaatAttendanceScreen(miqaat: miqaat),
+            ),
+          );
+        } else if (user.roles != 2) {
+          // Navigate to member history screen (Member)
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MemberMiqaatHistoryScreen(
+                memberId: user.id,
+                fullName: user.fullName,
+                itsId: user.itsId,
+                miqaatId: miqaat.id,
+              ),
             ),
           );
         }

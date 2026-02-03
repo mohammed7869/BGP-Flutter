@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:burhaniguardsapp/core/constants/api_constants.dart';
+import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 class MiqaatAttendanceScreen extends StatefulWidget {
   final Miqaat miqaat;
@@ -14,6 +20,7 @@ class MiqaatAttendanceScreen extends StatefulWidget {
 
 class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   final MiqaatService _miqaatService = MiqaatService();
+  final LocalStorageService _localStorage = LocalStorageService();
   List<EnrolledMember> _members = [];
   final Set<int> _selectedMemberIds = {};
   bool _isLoading = true;
@@ -136,6 +143,36 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
     }
   }
 
+  void _showReportDialog() {
+    // Check if report already exists
+    final hasExistingReport = widget.miqaat.miqaatImage1 != null ||
+        widget.miqaat.miqaatImage2 != null ||
+        (widget.miqaat.notes != null && widget.miqaat.notes!.isNotEmpty);
+
+    if (hasExistingReport) {
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report already submitted for this miqaat'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MiqaatReportBottomSheet(
+        miqaatId: widget.miqaat.id,
+        miqaatName: widget.miqaat.miqaatName,
+        parentContext: this.context,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,13 +221,36 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.miqaat.miqaatName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.miqaat.miqaatName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4A1C1C).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.note_add_outlined,
+                                  color: Color(0xFF4A1C1C),
+                                  size: 22,
+                                ),
+                                onPressed: _showReportDialog,
+                                tooltip: 'Submit Report',
+                                padding: const EdgeInsets.all(8),
+                                constraints: const BoxConstraints(),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -423,6 +483,7 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                       memberId: member.id,
                       fullName: member.fullName,
                       itsId: member.itsId,
+                      miqaatId: widget.miqaat.id,
                     ),
                   ),
                 );
@@ -468,6 +529,565 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class MiqaatReportBottomSheet extends StatefulWidget {
+  final int miqaatId;
+  final String miqaatName;
+  final BuildContext parentContext;
+
+  const MiqaatReportBottomSheet({
+    Key? key,
+    required this.miqaatId,
+    required this.miqaatName,
+    required this.parentContext,
+  }) : super(key: key);
+
+  @override
+  State<MiqaatReportBottomSheet> createState() =>
+      _MiqaatReportBottomSheetState();
+}
+
+class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
+  final LocalStorageService _localStorage = LocalStorageService();
+  final TextEditingController _notesController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  File? _image1;
+  File? _image2;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage(int imageNumber, ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          if (imageNumber == 1) {
+            _image1 = File(pickedFile.path);
+          } else {
+            _image2 = File(pickedFile.path);
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImageSourceDialog(int imageNumber) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select Image Source',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildSourceOption(
+                    icon: Icons.camera_alt,
+                    label: 'Camera',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(imageNumber, ImageSource.camera);
+                    },
+                  ),
+                  _buildSourceOption(
+                    icon: Icons.photo_library,
+                    label: 'Gallery',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(imageNumber, ImageSource.gallery);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF4A1C1C).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 36, color: const Color(0xFF4A1C1C)),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF4A1C1C),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitReport() async {
+    // Validate all fields are provided
+    if (_image1 == null) {
+      ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+        const SnackBar(
+          content: Text('Image 1 is required'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    if (_image2 == null) {
+      ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+        const SnackBar(
+          content: Text('Image 2 is required'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    if (_notesController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+        const SnackBar(
+          content: Text('Notes is required'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}${ApiConstants.createMiqaat}/${widget.miqaatId}/report');
+
+      // Create multipart request
+      var request = http.MultipartRequest('POST', url);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Add images if available
+      if (_image1 != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'Image1',
+          _image1!.path,
+        ));
+      }
+      if (_image2 != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'Image2',
+          _image2!.path,
+        ));
+      }
+
+      // Add notes if available
+      if (_notesController.text.isNotEmpty) {
+        request.fields['Notes'] = _notesController.text;
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+            const SnackBar(
+              content: Text('Report submitted successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        String errorMessage = 'Failed to submit report';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          }
+        } catch (_) {
+          // If JSON parsing fails, use status code to determine error
+          if (response.statusCode == 400) {
+            errorMessage = 'Invalid request. Please check all fields.';
+          } else if (response.statusCode == 403) {
+            errorMessage = 'You do not have permission to submit reports.';
+          } else if (response.statusCode == 404) {
+            errorMessage = 'Miqaat not found.';
+          }
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  void _clearForm() {
+    setState(() {
+      _image1 = null;
+      _image2 = null;
+      _notesController.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Title
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4A1C1C).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.assignment_outlined,
+                      color: Color(0xFF4A1C1C),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Submit Report',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          widget.miqaatName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // Image Section
+              const Text(
+                'Upload Images',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Add up to 2 images from camera or gallery',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _buildImagePicker(1, _image1)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildImagePicker(2, _image2)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // Notes Section
+              const Text(
+                'Notes',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notesController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: 'Add any notes about this miqaat...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF4A1C1C)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isSubmitting ? null : _clearForm,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: Color(0xFF4A1C1C)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Clear',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF4A1C1C),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _submitReport,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4A1C1C),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.send, color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Submit Report',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePicker(int imageNumber, File? image) {
+    return GestureDetector(
+      onTap: () => _showImageSourceDialog(imageNumber),
+      child: Container(
+        height: 140,
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: image != null ? const Color(0xFF4A1C1C) : Colors.grey[300]!,
+            width: image != null ? 2 : 1,
+          ),
+        ),
+        child: image != null
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.file(
+                      image,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (imageNumber == 1) {
+                            _image1 = null;
+                          } else {
+                            _image2 = null;
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 40,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Image $imageNumber',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap to add',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

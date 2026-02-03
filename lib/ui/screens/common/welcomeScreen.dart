@@ -1,5 +1,6 @@
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/admin_login.dart';
+import 'package:burhaniguardsapp/ui/screens/common/privacyPolicyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/memberLoginScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/shaped_background.dart';
 import 'package:burhaniguardsapp/ui/widgets/baawan_erp_dialog.dart';
@@ -116,42 +117,72 @@ class LoginScreen extends StatelessWidget {
   }
 
   Widget _buildFooter(BuildContext context) {
-    return Column(
-      children: [
-        const Text(
-          'Powered By',
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        'Powered By',
+        style: TextStyle(
+          fontSize: 11,
+          color: AppColors.primary,
+        ),
+      ),
+      const SizedBox(height: 4),
+
+      InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
+              return const BaawanErpDialog();
+            },
+          );
+        },
+        child: const Text(
+          'Baawan.com',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.primary,
+            decoration: TextDecoration.underline,
+            decorationThickness: 2,
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 8),
+
+      const Text(
+        'For more info, please read',
+        style: TextStyle(
+          fontSize: 10,
+          color: AppColors.primary,
+        ),
+      ),
+
+      const SizedBox(height: 4),
+
+      InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PrivacyPolicyScreen(),
+            ),
+          );
+        },
+        child: const Text(
+          'Privacy Policy',
           style: TextStyle(
             fontSize: 11,
             color: AppColors.primary,
             decoration: TextDecoration.underline,
-            // decorationColor: Colors.blue, // optional
             decorationThickness: 2,
           ),
         ),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: () {
-            showDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (BuildContext dialogContext) {
-                return const BaawanErpDialog();
-              },
-            );
-          },
-          child: const Text(
-            'Baawan.com',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.primary,
-              // fontWeight: FontWeight.w600,
-              decoration: TextDecoration.underline,
-              decorationColor: Colors.blue, // optional
-              decorationThickness: 2,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
 }

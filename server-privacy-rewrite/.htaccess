@@ -1,0 +1,8 @@
+# Apache: serve privacy.html for /privacy
+RewriteEngine On
+RewriteRule ^privacy/?$ privacy.html [L]
+
+# Optional: SPA fallback - send other non-file requests to index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.html [L]
