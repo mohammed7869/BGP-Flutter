@@ -195,11 +195,18 @@ class _PointsScreenState extends State<PointsScreen>
     final topMembers = _members.take(3).toList();
     final otherMembers = _members.skip(3).toList();
 
+    // Create a map of points to count how many members have the same points
+    final pointsCount = <int, int>{};
+    for (final member in _members) {
+      pointsCount[member.totalPoints] =
+          (pointsCount[member.totalPoints] ?? 0) + 1;
+    }
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
         // Top 3 Podium Section
-        if (topMembers.isNotEmpty) _buildPodiumSection(topMembers),
+        if (topMembers.isNotEmpty) _buildPodiumSection(topMembers, pointsCount),
         const SizedBox(height: 24),
         if (otherMembers.isNotEmpty) ...[
           const Text(
@@ -212,7 +219,10 @@ class _PointsScreenState extends State<PointsScreen>
           ),
           const SizedBox(height: 12),
           ...otherMembers.asMap().entries.map((entry) {
-            return _buildMemberCard(entry.value, rank: entry.key + 4);
+            final hasSamePoints =
+                (pointsCount[entry.value.totalPoints] ?? 0) > 1;
+            return _buildMemberCard(entry.value,
+                rank: entry.key + 4, hasSamePoints: hasSamePoints);
           }),
         ],
       ],
@@ -220,17 +230,42 @@ class _PointsScreenState extends State<PointsScreen>
   }
 
   Widget _buildMemberView() {
-    return ListView.builder(
+    // For non-captain view, only show the current user's data with their rank
+    if (_members.isEmpty) {
+      return const Center(
+        child: Text('No points data available'),
+      );
+    }
+
+    // Sort all members by points to calculate rank
+    final sortedMembers = List<MemberPointsDto>.from(_members);
+    sortedMembers.sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
+
+    // Find the current user's rank
+    int userRank = 1;
+    for (int i = 0; i < sortedMembers.length; i++) {
+      if (sortedMembers[i].memberId == _currentUserId) {
+        userRank = i + 1;
+        break;
+      }
+    }
+
+    // Find current user in the original list
+    final currentUserData = _members.firstWhere(
+      (m) => m.memberId == _currentUserId,
+      orElse: () => _members.first,
+    );
+
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _members.length,
-      itemBuilder: (context, index) {
-        final member = _members[index];
-        return _buildMemberCard(member);
-      },
+      children: [
+        _buildMemberCard(currentUserData, rank: userRank),
+      ],
     );
   }
 
-  Widget _buildPodiumSection(List<MemberPointsDto> topMembers) {
+  Widget _buildPodiumSection(
+      List<MemberPointsDto> topMembers, Map<int, int> pointsCount) {
     return ScaleTransition(
       scale: _scaleAnimation,
       child: Container(
@@ -267,16 +302,20 @@ class _PointsScreenState extends State<PointsScreen>
               children: [
                 // 2nd Place
                 if (topMembers.length > 1)
-                  _buildPodiumItem(topMembers[1], 2, 80)
+                  _buildPodiumItem(topMembers[1], 2, 80,
+                      isTied: (pointsCount[topMembers[1].totalPoints] ?? 0) > 1)
                 else
                   const SizedBox(width: 90),
                 const SizedBox(width: 8),
                 // 1st Place
-                if (topMembers.isNotEmpty) _buildPodiumItem(topMembers[0], 1, 100),
+                if (topMembers.isNotEmpty)
+                  _buildPodiumItem(topMembers[0], 1, 100,
+                      isTied: (pointsCount[topMembers[0].totalPoints] ?? 0) > 1),
                 const SizedBox(width: 8),
                 // 3rd Place
                 if (topMembers.length > 2)
-                  _buildPodiumItem(topMembers[2], 3, 60)
+                  _buildPodiumItem(topMembers[2], 3, 60,
+                      isTied: (pointsCount[topMembers[2].totalPoints] ?? 0) > 1)
                 else
                   const SizedBox(width: 90),
               ],
@@ -287,7 +326,8 @@ class _PointsScreenState extends State<PointsScreen>
     );
   }
 
-  Widget _buildPodiumItem(MemberPointsDto member, int rank, double height) {
+  Widget _buildPodiumItem(MemberPointsDto member, int rank, double height,
+      {bool isTied = false}) {
     final colors = {
       1: const Color(0xFFFFD700), // Gold
       2: const Color(0xFFC0C0C0), // Silver
@@ -389,6 +429,24 @@ class _PointsScreenState extends State<PointsScreen>
               ),
             ),
           ),
+          // Tied indicator
+          if (isTied)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'TIE',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           const SizedBox(height: 8),
           // Podium bar
           Container(
@@ -424,7 +482,8 @@ class _PointsScreenState extends State<PointsScreen>
     );
   }
 
-  Widget _buildMemberCard(MemberPointsDto member, {int? rank}) {
+  Widget _buildMemberCard(MemberPointsDto member,
+      {int? rank, bool hasSamePoints = false}) {
     final isCurrentUser = member.memberId == _currentUserId;
 
     return InkWell(
@@ -447,11 +506,19 @@ class _PointsScreenState extends State<PointsScreen>
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isCurrentUser ? const Color(0xFFFFF8E1) : Colors.white,
+          color: hasSamePoints && !isCurrentUser
+              ? const Color(0xFFFFF8E1)
+              : isCurrentUser
+                  ? const Color(0xFFFFF8E1)
+                  : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isCurrentUser ? const Color(0xFFFFB300) : Colors.grey[300]!,
-            width: isCurrentUser ? 2 : 1,
+            color: hasSamePoints
+                ? Colors.orange
+                : isCurrentUser
+                    ? const Color(0xFFFFB300)
+                    : Colors.grey[300]!,
+            width: (isCurrentUser || hasSamePoints) ? 2 : 1,
           ),
           boxShadow: isCurrentUser
               ? [
@@ -461,7 +528,15 @@ class _PointsScreenState extends State<PointsScreen>
                     offset: const Offset(0, 2),
                   ),
                 ]
-              : null,
+              : hasSamePoints
+                  ? [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.15),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
         ),
         child: Row(
           children: [
@@ -561,6 +636,24 @@ class _PointsScreenState extends State<PointsScreen>
                 ],
               ),
             ),
+            // TIE badge (show before points for tied members)
+            if (hasSamePoints)
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'TIE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(

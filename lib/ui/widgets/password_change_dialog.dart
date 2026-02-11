@@ -5,11 +5,17 @@ import 'package:google_fonts/google_fonts.dart';
 class PasswordChangeDialog extends StatefulWidget {
   final String captainName;
   final Future<bool> Function(String newPassword, String confirmPassword) onPasswordChanged;
+  final String? title;
+  final String? subtitle;
+  final bool isDismissible;
 
   const PasswordChangeDialog({
     Key? key,
     required this.captainName,
     required this.onPasswordChanged,
+    this.title,
+    this.subtitle,
+    this.isDismissible = false,
   }) : super(key: key);
 
   @override
@@ -103,7 +109,7 @@ class _PasswordChangeDialogState extends State<PasswordChangeDialog> {
               children: [
                 // Title
                 Text(
-                  'Create New Password',
+                  widget.title ?? 'Create New Password',
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -134,7 +140,7 @@ class _PasswordChangeDialogState extends State<PasswordChangeDialog> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Please create a new password to continue.',
+                          widget.subtitle ?? 'Please create a new password to continue.',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.blue.shade900,
@@ -211,12 +217,16 @@ class _PasswordChangeDialogState extends State<PasswordChangeDialog> {
                     Expanded(
                       child: TextButton(
                         onPressed: _isLoading ? null : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("You must change your password to continue."),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
+                          if (widget.isDismissible) {
+                            Navigator.of(context).pop();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("You must change your password to continue."),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
                         },
                         child: const Text('Cancel'),
                       ),

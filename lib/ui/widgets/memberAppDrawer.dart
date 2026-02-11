@@ -152,12 +152,12 @@ class AppDrawer extends StatelessWidget {
                     _buildMenuItem(
                       context,
                       icon: Icons.event_outlined,
-                      title: 'Enrolled Events',
+                      title: 'Points Table',
                       onTap: () {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const EnrolledMiqaatScreen()),
+                              builder: (_) => const PointsTableScreen()),
                         );
                         // Navigate to Enrolled Events
                       },

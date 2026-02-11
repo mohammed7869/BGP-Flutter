@@ -20,12 +20,16 @@ class _MembersListScreenState extends State<MembersListScreen> {
   final LocalStorageService _localStorage = LocalStorageService();
   final UserService _userService = UserService();
   List<EnrolledMember> _enrolledMembers = [];
+  List<EnrolledMember> _allMembers = []; // All members with status categories
   List<Map<String, dynamic>> _jamaatMembers = [];
 
   bool _isLoading = false;
   bool _isCaptain = false;
   bool _isCheckingRole = true;
   String? _userJamaat;
+  
+  // Tab selection: 0 = Enrolled, 1 = Pending, 2 = Rejected
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -96,10 +100,13 @@ class _MembersListScreenState extends State<MembersListScreen> {
     });
 
     try {
+      // Use getAllMembersByMiqaatId to get members with status categories
       final members =
-          await _miqaatService.getEnrolledMembersByMiqaatId(widget.miqaat!.id);
+          await _miqaatService.getAllMembersByMiqaatId(widget.miqaat!.id);
       setState(() {
-        _enrolledMembers = members;
+        _allMembers = members;
+        // Also populate _enrolledMembers for backward compatibility
+        _enrolledMembers = members.where((m) => m.statusCategory == 'Enrolled').toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -114,6 +121,20 @@ class _MembersListScreenState extends State<MembersListScreen> {
           ),
         );
       }
+    }
+  }
+
+  // Get members filtered by selected tab
+  List<EnrolledMember> get _filteredMembers {
+    switch (_selectedTab) {
+      case 0: // Enrolled
+        return _allMembers.where((m) => m.statusCategory == 'Enrolled').toList();
+      case 1: // Pending
+        return _allMembers.where((m) => m.statusCategory == 'Pending').toList();
+      case 2: // Rejected
+        return _allMembers.where((m) => m.statusCategory == 'Rejected').toList();
+      default:
+        return _allMembers;
     }
   }
 
@@ -195,7 +216,14 @@ class _MembersListScreenState extends State<MembersListScreen> {
                       child: _buildMiqaatInfoCard(widget.miqaat!),
                     ),
 
-                  const SizedBox(height: 20),
+                  // Tab Capsules for miqaat context
+                  if (widget.miqaat != null && _isCaptain && !_isCheckingRole)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: _buildTabCapsules(),
+                    ),
+
+                  const SizedBox(height: 8),
 
                   // Members List
                   Expanded(
@@ -239,13 +267,17 @@ class _MembersListScreenState extends State<MembersListScreen> {
                             : _isLoading
                                 ? const Center(child: CircularProgressIndicator())
                                 : widget.miqaat != null
-                            ? (_enrolledMembers.isEmpty
-                                ? const Center(
+                            ? (_filteredMembers.isEmpty
+                                ? Center(
                                     child: Padding(
-                                      padding: EdgeInsets.all(20.0),
+                                      padding: const EdgeInsets.all(20.0),
                                       child: Text(
-                                        'No enrolled members found',
-                                        style: TextStyle(
+                                        _selectedTab == 0 
+                                            ? 'No enrolled members found'
+                                            : _selectedTab == 1 
+                                                ? 'No pending members found'
+                                                : 'No rejected members found',
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.grey,
                                         ),
@@ -255,9 +287,9 @@ class _MembersListScreenState extends State<MembersListScreen> {
                                 : ListView.builder(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 20),
-                                    itemCount: _enrolledMembers.length,
+                                    itemCount: _filteredMembers.length,
                                     itemBuilder: (context, index) {
-                                      final member = _enrolledMembers[index];
+                                      final member = _filteredMembers[index];
                                       return _buildMemberCard(
                                         index + 1,
                                         member,
@@ -299,6 +331,72 @@ class _MembersListScreenState extends State<MembersListScreen> {
     );
   }
 
+  Widget _buildTabCapsules() {
+    final enrolledCount = _allMembers.where((m) => m.statusCategory == 'Enrolled').length;
+    final pendingCount = _allMembers.where((m) => m.statusCategory == 'Pending').length;
+    final rejectedCount = _allMembers.where((m) => m.statusCategory == 'Rejected').length;
+
+    return Row(
+      children: [
+        _buildTabCapsule(0, 'Enrolled', enrolledCount, Colors.green),
+        const SizedBox(width: 4),
+        _buildTabCapsule(1, 'Pending', pendingCount, Colors.orange),
+        const SizedBox(width: 8),
+        _buildTabCapsule(2, 'Rejected', rejectedCount, Colors.red),
+      ],
+    );
+  }
+
+  Widget _buildTabCapsule(int index, String label, int count, Color color) {
+    final isSelected = _selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTab = index;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF4A1C1C) : Colors.grey[200],
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF4A1C1C) : Colors.grey[300]!,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  '$label ($count)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _formatDate(DateTime date) {
     final months = [
       'Jan',
@@ -329,48 +427,73 @@ class _MembersListScreenState extends State<MembersListScreen> {
     final durationDisplay = miqaat.durationLabel;
 
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A1C1C), Color(0xFF6B2D2D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4A1C1C).withOpacity(0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Miqaat Name
           Text(
-            'Miqaat: ${miqaat.miqaatName}',
+            miqaat.miqaatName,
             style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          // Date Row
+          Row(
+            children: [
+              const Icon(Icons.calendar_today, color: Colors.white70, size: 14),
+              const SizedBox(width: 6),
+              Text(
+                dateDisplay,
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
-          Text(
-            'Date: $dateDisplay',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'No. of days: $durationDisplay',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Location: ${miqaat.jamaat}, ${miqaat.jamiyat}',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-            ),
+          // Days and Location Row
+          Row(
+            children: [
+              // Days
+              const Icon(Icons.access_time, color: Colors.white70, size: 14),
+              const SizedBox(width: 6),
+              Text(
+                durationDisplay,
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+              ),
+              const SizedBox(width: 20),
+              // Location
+              const Icon(Icons.location_on, color: Colors.white70, size: 14),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '${miqaat.jamaat}, ${miqaat.jamiyat}',
+                  style: const TextStyle(fontSize: 12, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -383,11 +506,11 @@ class _MembersListScreenState extends State<MembersListScreen> {
     final isRejected = finalStatus == 'Rejected';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey[300]!, width: 1),
       ),
       child: Row(
@@ -396,107 +519,129 @@ class _MembersListScreenState extends State<MembersListScreen> {
           Text(
             number.toString().padLeft(2, '0'),
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: Colors.grey,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
 
           // Avatar
           Container(
-            width: 40,
-            height: 40,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: Colors.grey[300],
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.person, color: Colors.grey, size: 24),
+            child: const Icon(Icons.person, color: Colors.grey, size: 18),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
           // Name and Status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   member.fullName,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                if (isApproved)
-                  const Text(
-                    'Approved by Captain',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green,
-                      fontWeight: FontWeight.w500,
+                const SizedBox(height: 2),
+                // Show captain approval status only for Enrolled members
+                if (member.statusCategory == 'Enrolled') ...[
+                  if (isApproved)
+                    const Text(
+                      'Captain Approved',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.green,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  else if (isRejected)
+                    const Text(
+                      'Captain Rejected',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  else
+                    const Text(
+                      'Pending Captain Approval',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  )
-                else if (isRejected)
-                  const Text(
-                    'Rejected by Captain',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.red,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  )
-                else
-                  const Text(
-                    'Enrolled - Pending Captain Approval',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                ],
               ],
             ),
           ),
 
-          // Action Buttons (only show if miqaat is provided and not yet approved/rejected)
-          if (widget.miqaat != null && !isApproved && !isRejected)
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                  ),
-                  child: InkWell(
-                    onTap: () => _handleApprove(member),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
+          // Info Icon (show enrolled days)
+          if (widget.miqaat != null)
+            InkWell(
+              onTap: () => _showEnrollmentDaysDialog(member),
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: InkWell(
-                    onTap: () => _handleReject(member),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
+                child: const Icon(
+                  Icons.info_outline,
+                  color: Colors.blue,
+                  size: 16,
                 ),
-              ],
+              ),
             ),
+
+          // Action Buttons (only show for Enrolled tab, and if not yet approved/rejected)
+          if (widget.miqaat != null && _selectedTab == 0 && !isApproved && !isRejected) ...[
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _handleApprove(member),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _handleReject(member),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -559,6 +704,186 @@ class _MembersListScreenState extends State<MembersListScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to reject member: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEnrollmentDaysDialog(EnrolledMember member) async {
+    if (widget.miqaat == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final enrollmentDays = await _miqaatService.getMemberEnrollmentDays(
+        miqaatId: widget.miqaat!.id,
+        memberId: member.id,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+
+        final approvedDays =
+            enrollmentDays.where((d) => d.status == 'Approved').toList();
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              member.fullName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Enrolled Days: ${approvedDays.length}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (enrollmentDays.isEmpty)
+                    const Text(
+                      'No enrollment data available',
+                      style: TextStyle(color: Colors.grey),
+                    )
+                  else
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.4,
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: enrollmentDays.length,
+                        itemBuilder: (context, index) {
+                          final day = enrollmentDays[index];
+                          final isEnrolled = day.status == 'Approved';
+                          final statusColor = isEnrolled
+                              ? Colors.green
+                              : day.status == 'Rejected'
+                                  ? Colors.red
+                                  : Colors.orange;
+                          final statusText = isEnrolled
+                              ? 'Enrolled'
+                              : day.status == 'Rejected'
+                                  ? 'Rejected'
+                                  : 'Not Enrolled';
+                          final finalStatusColor =
+                              day.finalStatus == 'Approved'
+                                  ? Colors.green
+                                  : day.finalStatus == 'Rejected'
+                                      ? Colors.red
+                                      : Colors.grey;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: statusColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Day ${day.day}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      day.miqaatDate,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        statusText,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    // Show captain status only for Enrolled users (when member enrolled themselves)
+                                    if (day.finalStatus != null && day.status == 'Approved')
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Captain: ${day.finalStatus}',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: finalStatusColor,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load enrollment days: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );

@@ -1,6 +1,7 @@
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
+import 'package:burhaniguardsapp/ui/screens/common/forgot_password_screen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/privacyPolicyScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
 import 'package:burhaniguardsapp/ui/widgets/baawan_erp_dialog.dart';
@@ -48,15 +49,13 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
             // Show password change dialog
             _showPasswordChangeDialog(response.fullName, itsNo);
           } else {
-            // Login successful - user data is already stored in local storage
+            // Login successful - navigate directly to dashboard
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("Login successful!"),
                 backgroundColor: Colors.green,
               ),
             );
-
-            // Navigate to dashboard after login
             _navigateToDashboard();
           }
         }
@@ -254,7 +253,32 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                                       return null;
                                     },
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 12),
+                                // Forgot Password Link
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const ForgotPasswordScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
                                 // Login Button
                                 _buildButtons(context, _submit),
                               ],
@@ -379,37 +403,40 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
 
       const SizedBox(height: 8),
 
-      const Text(
-        'For more info, please read',
-        style: TextStyle(
-          fontSize: 10,
-          color: Colors.white70,
-          fontWeight: FontWeight.w400,
-        ),
-      ),
-
-      const SizedBox(height: 4),
-
-      InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const PrivacyPolicyScreen(),
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'For more info, please read ',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.white70,
+              fontWeight: FontWeight.w400,
             ),
-          );
-        },
-        child: const Text(
-          'Privacy Policy',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.white,
-            decoration: TextDecoration.underline,
-            decorationColor: Colors.white,
-            decorationThickness: 1.5,
-            fontWeight: FontWeight.w600,
           ),
-        ),
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PrivacyPolicyScreen(),
+                ),
+              );
+            },
+            child: const Text(
+              'Privacy Policy',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white,
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.white,
+                decorationThickness: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     ],
   );
@@ -497,4 +524,5 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
     );
   }
+
 }

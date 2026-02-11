@@ -165,4 +165,149 @@ class AuthService {
   Future<void> logout() async {
     await _localStorage.clearAll();
   }
+
+  /// Forgot password - request OTP
+  Future<ForgotPasswordResponse> forgotPassword(String itsNumber) async {
+    try {
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.forgotPassword}');
+      final request = ForgotPasswordRequest(itsNumber: itsNumber);
+
+      final response = await http
+          .post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(request.toJson()),
+      )
+          .timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return ForgotPasswordResponse.fromJson(jsonResponse);
+      } else {
+        final message = jsonResponse['message'] as String? ?? 'Request failed';
+        throw Exception(message);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception('Unable to connect to server. Please check your connection.');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
+
+  /// Verify OTP
+  Future<VerifyOtpResponse> verifyOtp(String itsNumber, String otpCode) async {
+    try {
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verifyOtp}');
+      final request = VerifyOtpRequest(itsNumber: itsNumber, otpCode: otpCode);
+
+      final response = await http
+          .post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(request.toJson()),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return VerifyOtpResponse.fromJson(jsonResponse);
+      } else {
+        final message = jsonResponse['message'] as String? ?? 'Invalid OTP';
+        throw Exception(message);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception('Unable to connect to server. Please check your connection.');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
+
+  /// Reset password
+  Future<ResetPasswordResponse> resetPassword(
+      String itsNumber, String otpCode, String newPassword, String confirmPassword) async {
+    try {
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.resetPassword}');
+      final request = ResetPasswordRequest(
+        itsNumber: itsNumber,
+        otpCode: otpCode,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+
+      final response = await http
+          .post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(request.toJson()),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return ResetPasswordResponse.fromJson(jsonResponse);
+      } else {
+        final message = jsonResponse['message'] as String? ?? 'Password reset failed';
+        throw Exception(message);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception('Unable to connect to server. Please check your connection.');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
 }
+

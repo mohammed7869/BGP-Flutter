@@ -20,11 +20,7 @@ Widget buildAppBarWithBackButton(context) {
           },
         ),
         Image.asset('assets/images/burhani guards logo.png', height: 52),
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined,
-              color: Colors.white, size: 28),
-          onPressed: () {},
-        ),
+        const SizedBox(width: 48), // Placeholder for layout balance
       ],
     ),
   );

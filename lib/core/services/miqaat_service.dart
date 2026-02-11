@@ -452,6 +452,79 @@ class MiqaatService {
     }
   }
 
+  /// Gets all members for a miqaat with their status categories (Enrolled/Pending/Rejected)
+  Future<List<EnrolledMember>> getAllMembersByMiqaatId(int miqaatId) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getEnrolledMembers}/$miqaatId/all-members');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse is List) {
+          return jsonResponse
+              .map((item) => EnrolledMember.fromJson(item as Map<String, dynamic>))
+              .toList();
+        } else {
+          throw Exception('Invalid response format from server.');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Only Captains can view all members');
+      } else {
+        String errorMessage = 'Failed to fetch all members. Please try again.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          } else if (errorBody is String) {
+            errorMessage = errorBody;
+          }
+        } catch (e) {
+          errorMessage =
+              response.body.isNotEmpty ? response.body : errorMessage;
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('FormatException') ||
+          errorMsg.contains('Unexpected character')) {
+        throw Exception('Invalid response from server. Please try again.');
+      } else if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception(
+              'Unable to connect to server. Please check:\n1. API is running\n2. Correct IP address in api_constants.dart\n3. Phone and laptop on same Wi-Fi');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
+
   Future<List<EnrolledMember>> getApprovedMembersForAttendance(int miqaatId,
       {int day = 1}) async {
     try {
@@ -734,6 +807,76 @@ class MiqaatService {
       rethrow;
     }
   }
+
+  Future<List<MemberEnrollmentDay>> getMemberEnrollmentDays({
+    required int miqaatId,
+    required int memberId,
+  }) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}${ApiConstants.getMemberEnrollmentDays}/$miqaatId/member/$memberId/enrollment-days');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse is List) {
+          return jsonResponse
+              .map((item) =>
+                  MemberEnrollmentDay.fromJson(item as Map<String, dynamic>))
+              .toList();
+        } else {
+          throw Exception('Invalid response format from server.');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Only Captains can view member enrollment days');
+      } else {
+        String errorMessage =
+            'Failed to fetch member enrollment days. Please try again.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          }
+        } catch (_) {}
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception(
+              'Unable to connect to server. Please check:\n1. API is running\n2. Correct IP address in api_constants.dart\n3. Phone and laptop on same Wi-Fi');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
 }
 
 class Miqaat {
@@ -756,6 +899,8 @@ class Miqaat {
   final String? miqaatImage1;
   final String? miqaatImage2;
   final String? notes;
+  final List<String>? khidmatDone;
+  final bool isReportSubmitted;
 
   Miqaat({
     required this.id,
@@ -776,12 +921,29 @@ class Miqaat {
     this.miqaatImage1,
     this.miqaatImage2,
     this.notes,
+    this.khidmatDone,
+    this.isReportSubmitted = false,
   });
 
   factory Miqaat.fromJson(Map<String, dynamic> json) {
     final from = DateTime.parse(json['fromDate'] as String);
     final till = DateTime.parse(json['tillDate'] as String);
     final computedDays = till.difference(from).inDays + 1;
+
+    // Parse khidmatDone from JSON string or list
+    List<String>? khidmatList;
+    if (json['khidmatDone'] != null) {
+      if (json['khidmatDone'] is String) {
+        try {
+          final decoded = jsonDecode(json['khidmatDone'] as String);
+          if (decoded is List) {
+            khidmatList = decoded.map((e) => e.toString()).toList();
+          }
+        } catch (_) {}
+      } else if (json['khidmatDone'] is List) {
+        khidmatList = (json['khidmatDone'] as List).map((e) => e.toString()).toList();
+      }
+    }
 
     return Miqaat(
       id: json['id'] as int? ?? 0,
@@ -807,6 +969,8 @@ class Miqaat {
       miqaatImage1: json['miqaatImage1'] as String?,
       miqaatImage2: json['miqaatImage2'] as String?,
       notes: json['notes'] as String?,
+      khidmatDone: khidmatList,
+      isReportSubmitted: json['isReportSubmitted'] as bool? ?? false,
     );
   }
 
@@ -912,6 +1076,7 @@ class EnrolledMember {
   final String? finalStatus;
   final String? itsId;
   final bool? isAttended;
+  final String? statusCategory;  // "Enrolled", "Pending", or "Rejected"
 
   EnrolledMember({
     required this.id,
@@ -924,6 +1089,7 @@ class EnrolledMember {
     this.finalStatus,
     this.itsId,
     this.isAttended,
+    this.statusCategory,
   });
 
   factory EnrolledMember.fromJson(Map<String, dynamic> json) {
@@ -942,6 +1108,7 @@ class EnrolledMember {
       finalStatus: json['finalStatus'] as String?,
       itsId: json['itsId'] as String?,
       isAttended: json['isAttended'] as bool?,
+      statusCategory: json['statusCategory'] as String?,
     );
   }
 }
@@ -1011,4 +1178,27 @@ class MemberMiqaatAttendanceItem {
   }
 
   DateTime get dayDate => fromDate.add(Duration(days: miqaatDay - 1));
+}
+
+class MemberEnrollmentDay {
+  final int day;
+  final String status;
+  final String? finalStatus;
+  final String miqaatDate;
+
+  MemberEnrollmentDay({
+    required this.day,
+    required this.status,
+    this.finalStatus,
+    required this.miqaatDate,
+  });
+
+  factory MemberEnrollmentDay.fromJson(Map<String, dynamic> json) {
+    return MemberEnrollmentDay(
+      day: (json['day'] as num?)?.toInt() ?? 0,
+      status: json['status'] as String? ?? 'Pending',
+      finalStatus: json['finalStatus'] as String?,
+      miqaatDate: json['miqaatDate'] as String? ?? '',
+    );
+  }
 }

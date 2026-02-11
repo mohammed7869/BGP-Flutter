@@ -41,11 +41,10 @@ class _CustomBottomNavBarCaptainState extends State<CustomBottomNavBarCaptain> {
         MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
       );
     } else if (index == 1) {
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => const AttendanceMiqaatScreen(
-                initialFilter: 'Attendance History')),
+            builder: (_) => const _UnderDevelopmentScreen(title: 'Qardan Hasana')),
       );
     } else if (index == 3) {
       Navigator.pushReplacement(
@@ -85,7 +84,7 @@ class _CustomBottomNavBarCaptainState extends State<CustomBottomNavBarCaptain> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavItem(Icons.home, 'Home', 0),
-              _buildNavItem(Icons.bar_chart, 'Attendance', 1),
+              _buildNavItem(Icons.currency_rupee, 'Qardan...', 1),
               _buildCenterButton(),
               // _buildNavItem(Icons.event_note_outlined, 'Lawazam', 3),
               _buildNavItem(Icons.list, 'Miqaats', 3),
@@ -160,6 +159,56 @@ class _CustomBottomNavBarCaptainState extends State<CustomBottomNavBarCaptain> {
             MaterialPageRoute(builder: (_) => const CreateMiqaatScreen()),
           );
         },
+      ),
+    );
+  }
+}
+
+class _UnderDevelopmentScreen extends StatelessWidget {
+  final String title;
+
+  const _UnderDevelopmentScreen({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: const Color(0xFF4A1C1C),
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.construction,
+                size: 80,
+                color: Colors.orange[400],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Under Development',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4A1C1C),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This page is under development.\nPlease check back later!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

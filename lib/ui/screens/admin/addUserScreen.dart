@@ -34,6 +34,11 @@ class _AddUserScreenState extends State<AddUserScreen> {
   List<JamaatItem> _jamaats = [];
   bool _isLoadingJamiyatJamaat = false;
 
+  // Captain-specific variables
+  bool _isCaptain = false;
+  String? _captainJamiyat;
+  String? _captainJamaat;
+
   final List<String> _ranks = [
     'Member',
     'Captain',
@@ -59,12 +64,24 @@ class _AddUserScreenState extends State<AddUserScreen> {
     });
 
     try {
+      // Load current user data to check if captain
+      final userData = await _localStorage.getUserData();
+      _isCaptain = userData?.roles == 2;
+      _captainJamiyat = userData?.jamiyat;
+      _captainJamaat = userData?.jamaat;
+
       final response = await _miqaatService.getJamiyatJamaatWithCounts();
       if (response != null) {
         setState(() {
           _jamiyats = response.jamiyats;
           _jamaats = response.jamaats;
           _isLoadingJamiyatJamaat = false;
+
+          // If captain, auto-select their jamiyat and jamaat
+          if (_isCaptain) {
+            _selectedJamiyat = _captainJamiyat;
+            _selectedJamaat = _captainJamaat;
+          }
         });
       }
     } catch (e) {
@@ -374,15 +391,20 @@ class _AddUserScreenState extends State<AddUserScreen> {
   }
 
   Widget _buildJamiyatDropdown() {
+    // For captains, only show their own jamiyat
+    final displayJamiyats = _isCaptain && _captainJamiyat != null
+        ? _jamiyats.where((j) => j.name == _captainJamiyat).toList()
+        : _jamiyats;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<String>(
           value: _selectedJamiyat,
           decoration: InputDecoration(
-            label: const Text('Jamiyat'),
+            label: Text(_isCaptain ? 'Jamiyat (Locked)' : 'Jamiyat'),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: _isCaptain ? Colors.grey[100] : Colors.white,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
@@ -391,30 +413,38 @@ class _AddUserScreenState extends State<AddUserScreen> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
             ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+            ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
           ),
-          items: _jamiyats.map((JamiyatItem item) {
+          items: displayJamiyats.map((JamiyatItem item) {
             return DropdownMenuItem<String>(
               value: item.name,
               child: Text(item.displayName),
             );
           }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedJamiyat = value;
-              // Clear jamaat when jamiyat changes
-              _selectedJamaat = null;
-            });
-          },
+          onChanged: _isCaptain
+              ? null // Disable for captains
+              : (value) {
+                  setState(() {
+                    _selectedJamiyat = value;
+                    // Clear jamaat when jamiyat changes
+                    _selectedJamaat = null;
+                  });
+                },
         ),
       ],
     );
   }
 
   Widget _buildJamaatDropdown() {
-    // Filter jamaats based on selected jamiyat if needed
-    final filteredJamaats = _jamaats;
+    // For captains, only show their own jamaat
+    final displayJamaats = _isCaptain && _captainJamaat != null
+        ? _jamaats.where((j) => j.name == _captainJamaat).toList()
+        : _jamaats;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,9 +452,9 @@ class _AddUserScreenState extends State<AddUserScreen> {
         DropdownButtonFormField<String>(
           value: _selectedJamaat,
           decoration: InputDecoration(
-            label: const Text('Jamaat'),
+            label: Text(_isCaptain ? 'Jamaat (Locked)' : 'Jamaat'),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: _isCaptain ? Colors.grey[100] : Colors.white,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
@@ -433,20 +463,26 @@ class _AddUserScreenState extends State<AddUserScreen> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
             ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+            ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
           ),
-          items: filteredJamaats.map((JamaatItem item) {
+          items: displayJamaats.map((JamaatItem item) {
             return DropdownMenuItem<String>(
               value: item.name,
               child: Text(item.displayName),
             );
           }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedJamaat = value;
-            });
-          },
+          onChanged: _isCaptain
+              ? null // Disable for captains
+              : (value) {
+                  setState(() {
+                    _selectedJamaat = value;
+                  });
+                },
         ),
       ],
     );

@@ -217,3 +217,99 @@ class UserData {
     );
   }
 }
+
+// Forgot Password Models
+class ForgotPasswordRequest {
+  final String itsNumber;
+
+  ForgotPasswordRequest({required this.itsNumber});
+
+  Map<String, dynamic> toJson() {
+    return {'itsNumber': itsNumber};
+  }
+}
+
+class ForgotPasswordResponse {
+  final bool success;
+  final String message;
+  final String maskedEmail;
+
+  ForgotPasswordResponse({
+    required this.success,
+    required this.message,
+    required this.maskedEmail,
+  });
+
+  factory ForgotPasswordResponse.fromJson(Map<String, dynamic> json) {
+    return ForgotPasswordResponse(
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      maskedEmail: json['maskedEmail'] as String? ?? '',
+    );
+  }
+}
+
+class VerifyOtpRequest {
+  final String itsNumber;
+  final String otpCode;
+
+  VerifyOtpRequest({required this.itsNumber, required this.otpCode});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'itsNumber': itsNumber,
+      'otpCode': otpCode,
+    };
+  }
+}
+
+class VerifyOtpResponse {
+  final bool success;
+  final String message;
+
+  VerifyOtpResponse({required this.success, required this.message});
+
+  factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) {
+    return VerifyOtpResponse(
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+    );
+  }
+}
+
+class ResetPasswordRequest {
+  final String itsNumber;
+  final String otpCode;
+  final String newPassword;
+  final String confirmPassword;
+
+  ResetPasswordRequest({
+    required this.itsNumber,
+    required this.otpCode,
+    required this.newPassword,
+    required this.confirmPassword,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'itsNumber': itsNumber,
+      'otpCode': otpCode,
+      'newPassword': newPassword,
+      'confirmPassword': confirmPassword,
+    };
+  }
+}
+
+class ResetPasswordResponse {
+  final bool success;
+  final String message;
+
+  ResetPasswordResponse({required this.success, required this.message});
+
+  factory ResetPasswordResponse.fromJson(Map<String, dynamic> json) {
+    return ResetPasswordResponse(
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+    );
+  }
+}

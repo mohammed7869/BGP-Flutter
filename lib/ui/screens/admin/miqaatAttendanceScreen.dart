@@ -5,6 +5,7 @@ import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
@@ -143,14 +144,12 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
     }
   }
 
-  void _showReportDialog() {
-    // Check if report already exists
-    final hasExistingReport = widget.miqaat.miqaatImage1 != null ||
-        widget.miqaat.miqaatImage2 != null ||
-        (widget.miqaat.notes != null && widget.miqaat.notes!.isNotEmpty);
+  bool _hasExistingReport() {
+    return widget.miqaat.isReportSubmitted;
+  }
 
-    if (hasExistingReport) {
-      
+  void _showReportDialog() {
+    if (_hasExistingReport()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Report already submitted for this miqaat'),
@@ -169,6 +168,17 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
         miqaatId: widget.miqaat.id,
         miqaatName: widget.miqaat.miqaatName,
         parentContext: this.context,
+      ),
+    );
+  }
+
+  void _showViewReportDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MiqaatViewReportBottomSheet(
+        miqaat: widget.miqaat,
       ),
     );
   }
@@ -235,17 +245,27 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                             ),
                             Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFF4A1C1C).withOpacity(0.1),
+                                color: _hasExistingReport()
+                                    ? Colors.green.withOpacity(0.1)
+                                    : const Color(0xFF4A1C1C).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: IconButton(
-                                icon: const Icon(
-                                  Icons.note_add_outlined,
-                                  color: Color(0xFF4A1C1C),
+                                icon: Icon(
+                                  _hasExistingReport()
+                                      ? Icons.info_outline
+                                      : Icons.note_add_outlined,
+                                  color: _hasExistingReport()
+                                      ? Colors.green
+                                      : const Color(0xFF4A1C1C),
                                   size: 22,
                                 ),
-                                onPressed: _showReportDialog,
-                                tooltip: 'Submit Report',
+                                onPressed: _hasExistingReport()
+                                    ? _showViewReportDialog
+                                    : _showReportDialog,
+                                tooltip: _hasExistingReport()
+                                    ? 'View Report'
+                                    : 'Submit Report',
                                 padding: const EdgeInsets.all(8),
                                 constraints: const BoxConstraints(),
                               ),
@@ -559,6 +579,33 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
   File? _image2;
   bool _isSubmitting = false;
 
+  // Khidmat options
+  final List<String> _khidmatOptions = [
+    'Flow Management',
+    'Mawaid',
+    'Parking',
+    'Scanning',
+    'Masjid Tanzeem',
+    'Qasar Security',
+    'Qadam Ziyafat',
+    'Traffic',
+    'Wajebat Bethak',
+    'Audio Video Relay',
+    'Other',
+  ];
+
+  // Selected khidmat map
+  final Map<String, bool> _selectedKhidmat = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize all khidmat options to false
+    for (var option in _khidmatOptions) {
+      _selectedKhidmat[option] = false;
+    }
+  }
+
   @override
   void dispose() {
     _notesController.dispose();
@@ -708,6 +755,22 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
       return;
     }
 
+    // Validate at least one khidmat is selected
+    final selectedKhidmatList = _selectedKhidmat.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+    if (selectedKhidmatList.isEmpty) {
+      ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+        const SnackBar(
+          content: Text('Please select at least one Khidmat'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
@@ -744,18 +807,26 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
         request.fields['Notes'] = _notesController.text;
       }
 
+      // Add khidmat done as JSON string
+      request.fields['KhidmatDone'] = jsonEncode(selectedKhidmatList);
+
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         if (mounted) {
-          Navigator.pop(context);
+          Navigator.pop(context); // Close the bottom sheet
           ScaffoldMessenger.of(widget.parentContext).showSnackBar(
             const SnackBar(
               content: Text('Report submitted successfully'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
+          );
+          // Navigate to Dashboard after successful report submission
+          Navigator.of(widget.parentContext).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+            (route) => false,
           );
         }
       } else {
@@ -801,6 +872,10 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
       _image1 = null;
       _image2 = null;
       _notesController.clear();
+      // Reset khidmat selections
+      for (var option in _khidmatOptions) {
+        _selectedKhidmat[option] = false;
+      }
     });
   }
 
@@ -934,6 +1009,51 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
                     borderSide: const BorderSide(color: Color(0xFF4A1C1C)),
                   ),
                 ),
+              ),
+              const SizedBox(height: 24),
+              // Khidmat Done Section
+              const Text(
+                'Khidmat Done',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Select all khidmat performed during this miqaat',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Khidmat checkboxes in a wrapped layout
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: _khidmatOptions.map((option) {
+                  return SizedBox(
+                    width: (MediaQuery.of(context).size.width - 56) / 2,
+                    child: CheckboxListTile(
+                      title: Text(
+                        option,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      value: _selectedKhidmat[option] ?? false,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _selectedKhidmat[option] = value ?? false;
+                        });
+                      },
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      activeColor: const Color(0xFF4A1C1C),
+                    ),
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 32),
               // Buttons
@@ -1089,6 +1209,444 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
                 ],
               ),
       ),
+    );
+  }
+}
+
+// View Report Bottom Sheet - Premium view-only display
+class MiqaatViewReportBottomSheet extends StatefulWidget {
+  final Miqaat miqaat;
+
+  const MiqaatViewReportBottomSheet({
+    Key? key,
+    required this.miqaat,
+  }) : super(key: key);
+
+  @override
+  State<MiqaatViewReportBottomSheet> createState() =>
+      _MiqaatViewReportBottomSheetState();
+}
+
+class _MiqaatViewReportBottomSheetState
+    extends State<MiqaatViewReportBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  int _currentImageIndex = 0;
+  final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  List<String> get _images {
+    final images = <String>[];
+    if (widget.miqaat.miqaatImage1 != null) {
+      images.add(widget.miqaat.miqaatImage1!);
+    }
+    if (widget.miqaat.miqaatImage2 != null) {
+      images.add(widget.miqaat.miqaatImage2!);
+    }
+    return images;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Title with success indicator
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.green.shade400,
+                              Colors.green.shade600,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Report Submitted',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.miqaat.miqaatName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Images Section
+                  if (_images.isNotEmpty) ...[
+                    _buildSectionHeader(Icons.photo_library_outlined, 'Photos'),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 220,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          PageView.builder(
+                            controller: _pageController,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentImageIndex = index;
+                              });
+                            },
+                            itemCount: _images.length,
+                            itemBuilder: (context, index) {
+                              return Container(
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 2),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Image.network(
+                                    '${ApiConstants.miqaatImagesBaseUrl}/${_images[index]}',
+                                    fit: BoxFit.contain,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        color: Colors.grey[100],
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                                : null,
+                                            color: const Color(0xFF4A1C1C),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.broken_image_outlined,
+                                                size: 48,
+                                                color: Colors.grey[400]),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Image not available',
+                                              style: TextStyle(
+                                                  color: Colors.grey[500]),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          // Page indicator
+                          if (_images.length > 1)
+                            Positioned(
+                              bottom: 12,
+                              left: 0,
+                              right: 0,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  _images.length,
+                                  (index) => AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 4),
+                                    width:
+                                        _currentImageIndex == index ? 24 : 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      color: _currentImageIndex == index
+                                          ? Colors.white
+                                          : Colors.white.withOpacity(0.5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Notes Section
+                  if (widget.miqaat.notes != null &&
+                      widget.miqaat.notes!.isNotEmpty) ...[
+                    _buildSectionHeader(Icons.notes_outlined, 'Notes'),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Text(
+                        widget.miqaat.notes!,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey[800],
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Khidmat Section
+                  if (widget.miqaat.khidmatDone != null &&
+                      widget.miqaat.khidmatDone!.isNotEmpty) ...[
+                    _buildSectionHeader(Icons.volunteer_activism_outlined,
+                        'Khidmat Performed'),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: widget.miqaat.khidmatDone!.asMap().entries.map(
+                        (entry) {
+                          final index = entry.key;
+                          final khidmat = entry.value;
+                          return TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: Duration(milliseconds: 400 + (index * 80)),
+                            curve: Curves.easeOutBack,
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: value,
+                                child: Opacity(
+                                  opacity: value.clamp(0.0, 1.0),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF4A1C1C),
+                                    const Color(0xFF6B2D2D),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(25),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        const Color(0xFF4A1C1C).withOpacity(0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    khidmat,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Close Button
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[100],
+                        foregroundColor: Colors.grey[700],
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: const Color(0xFF4A1C1C),
+          size: 22,
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 }

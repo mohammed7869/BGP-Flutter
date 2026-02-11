@@ -1,3 +1,5 @@
+import 'package:burhaniguardsapp/core/constants/app_colors.dart';
+import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 // import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
@@ -5,6 +7,7 @@ import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 // import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
+import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
 import 'package:flutter/material.dart';
 
 class AdminAppDrawer extends StatefulWidget {
@@ -16,7 +19,9 @@ class AdminAppDrawer extends StatefulWidget {
 
 class _AdminAppDrawerState extends State<AdminAppDrawer> {
   String? _userName;
+  String? _userItsId;
   bool _isLoading = true;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -29,6 +34,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
     final userData = await localStorage.getUserData();
     setState(() {
       _userName = userData?.fullName ?? 'User';
+      _userItsId = userData?.itsId;
       _isLoading = false;
     });
   }
@@ -156,15 +162,15 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                         );
                       },
                     ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.event_available,
-                      title: 'Enrolled Events',
-                      onTap: () {
-                        Navigator.pop(context);
-                        // TODO: Navigate to Enrolled Events screen when implemented
-                      },
-                    ),
+                    // _buildMenuItem(
+                    //   context,
+                    //   icon: Icons.event_available,
+                    //   title: 'Enrolled Events',
+                    //   onTap: () {
+                    //     Navigator.pop(context);
+                    //     // TODO: Navigate to Enrolled Events screen when implemented
+                    //   },
+                    // ),
                     // _buildMenuItem(
                     //   context,
                     //   icon: Icons.bookmark,
@@ -183,27 +189,52 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
               ),
             ),
 
-            // Logout Button
+            // Bottom Buttons (Reset Password & Logout)
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.all(20),
-              child: ListTile(
-                leading: const Icon(
-                  Icons.exit_to_app,
-                  color: Colors.red,
-                  size: 22,
-                ),
-                title: const Text(
-                  'Log Out',
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Column(
+                children: [
+                  // Reset Password Button
+                  ListTile(
+                    leading: Icon(
+                      Icons.lock_reset,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                    title: Text(
+                      'Reset Password',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onTap: () {
+                      _handleResetPassword(context);
+                    },
                   ),
-                ),
-                onTap: () {
-                  _handleLogout(context);
-                },
+                  const Divider(height: 1),
+                  // Logout Button
+                  ListTile(
+                    leading: const Icon(
+                      Icons.exit_to_app,
+                      color: Colors.red,
+                      size: 22,
+                    ),
+                    title: const Text(
+                      'Log Out',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onTap: () {
+                      _handleLogout(context);
+                    },
+                  ),
+                ],
               ),
             ),
           ],
@@ -300,6 +331,60 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
           );
         }
       }
+    }
+  }
+
+  Future<void> _handleResetPassword(BuildContext context) async {
+    if (_userItsId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to reset password. Please login again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show password change dialog (Drawer stays open)
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return PasswordChangeDialog(
+          captainName: _userName ?? 'User',
+          title: 'Reset Password',
+          subtitle: 'Enter your new password to reset',
+          isDismissible: true,
+          onPasswordChanged: (String newPassword, String confirmPassword) async {
+            try {
+              final success = await _authService.changePassword(
+                _userItsId!,
+                newPassword,
+                confirmPassword,
+              );
+
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Password reset successfully!'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+                return true;
+              }
+              return false;
+            } catch (e) {
+              rethrow;
+            }
+          },
+        );
+      },
+    );
+
+    // Close the drawer after dialog is closed
+    if (mounted && Navigator.canPop(context)) {
+      Navigator.pop(context);
     }
   }
 }
