@@ -33,7 +33,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         final response = await _authService.forgotPassword(itsNo);
 
         if (response.success && mounted) {
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => OtpVerificationScreen(
@@ -142,25 +142,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 40),
-                            child: Text(
-                              'Enter your ITS Number and we\'ll send you an OTP to reset your password.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white.withOpacity(0.9),
-                                shadows: const [
-                                  Shadow(
-                                    offset: Offset(0, 1),
-                                    blurRadius: 2,
-                                    color: Colors.black26,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -171,7 +152,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 24.0),
                       padding: const EdgeInsets.all(24.0),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withOpacity(0.50),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -190,6 +171,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             Image.asset(
                               'assets/images/burhaniguards_logo.png',
                               height: 80,
+                            ),
+                            const SizedBox(height: 12),
+                            // Description text
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                'Enter your ITS Number and we\'ll send you an OTP to reset your password.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 24),
                             // ITS No. Field

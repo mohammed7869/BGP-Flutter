@@ -32,6 +32,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   bool _isLoading = false;
   bool _isResending = false;
 
+  // Separate cooldown for resend button (60 seconds)
+  Timer? _resendTimer;
+  int _resendCooldown = 60;
+
   // Timer for countdown
   Timer? _timer;
   int _remainingSeconds = 300; // 5 minutes = 300 seconds
@@ -40,11 +44,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void initState() {
     super.initState();
     _startTimer();
+    _startResendCooldown();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _resendTimer?.cancel();
     for (var controller in _otpControllers) {
       controller.dispose();
     }
@@ -61,6 +67,20 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (_remainingSeconds > 0) {
         setState(() {
           _remainingSeconds--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _startResendCooldown() {
+    _resendCooldown = 60;
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendCooldown > 0) {
+        setState(() {
+          _resendCooldown--;
         });
       } else {
         timer.cancel();
@@ -128,10 +148,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   Future<void> _resendOtp() async {
-    if (_remainingSeconds > 0) {
+    if (_resendCooldown > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please wait $_formattedTime before resending OTP'),
+          content: Text('Please wait ${_resendCooldown}s before resending OTP'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -154,6 +174,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         
         // Restart timer
         _startTimer();
+        _startResendCooldown();
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -284,7 +305,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     text: widget.maskedEmail,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                      fontSize: 24,
                                     ),
                                   ),
                                 ],
@@ -301,7 +322,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 24.0),
                       padding: const EdgeInsets.all(24.0),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withOpacity(0.50),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -469,7 +490,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 ),
                               ),
                               GestureDetector(
-                                onTap: _isResending ? null : _resendOtp,
+                                onTap: (_isResending || _resendCooldown > 0) ? null : _resendOtp,
                                 child: _isResending
                                     ? const SizedBox(
                                         height: 16,
@@ -480,14 +501,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                         ),
                                       )
                                     : Text(
-                                        _remainingSeconds > 0 ? 'Wait $_formattedTime' : 'Resend OTP',
+                                        _resendCooldown > 0 ? 'Wait ${_resendCooldown}s' : 'Resend OTP',
                                         style: TextStyle(
-                                          color: _remainingSeconds > 0
+                                          color: _resendCooldown > 0
                                               ? Colors.grey
                                               : AppColors.primary,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          decoration: _remainingSeconds > 0
+                                          decoration: _resendCooldown > 0
                                               ? null
                                               : TextDecoration.underline,
                                         ),
