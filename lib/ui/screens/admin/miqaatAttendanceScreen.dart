@@ -191,9 +191,11 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
           // Custom AppBar with curved bottom
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            decoration: const BoxDecoration(
-              color: Color(0xFF4A1C1C),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: widget.miqaat.isInternational
+                  ? const Color(0xFFB8860B) // Dark golden for international
+                  : const Color(0xFF4A1C1C),
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(20),
               ),
@@ -410,7 +412,9 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                   child: ElevatedButton(
                     onPressed: _isMarkingAttendance ? null : _markAttendance,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A1C1C),
+                      backgroundColor: widget.miqaat.isInternational
+                          ? const Color(0xFFB8860B)
+                          : const Color(0xFF4A1C1C),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),

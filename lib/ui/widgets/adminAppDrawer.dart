@@ -9,6 +9,7 @@ import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AdminAppDrawer extends StatefulWidget {
   const AdminAppDrawer({Key? key}) : super(key: key);
@@ -160,6 +161,44 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                           MaterialPageRoute(
                               builder: (_) => const UserProfileScreen()),
                         );
+                      },
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon:Icons.dry_cleaning,
+                      title: 'Uniform',
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final Uri url =
+                            Uri.parse('https://forms.gle/SxZUJQ1zp7EfoPiZ6');
+                        if (!await launchUrl(url,
+                            mode: LaunchMode.externalApplication)) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Could not launch Uniform URL')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.public,
+                      title: 'BGI',
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final Uri url =
+                            Uri.parse('https://app.burhaniguards.org/dashboard');
+                        if (!await launchUrl(url,
+                            mode: LaunchMode.externalApplication)) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Could not launch BGI URL')),
+                            );
+                          }
+                        }
                       },
                     ),
                     // _buildMenuItem(

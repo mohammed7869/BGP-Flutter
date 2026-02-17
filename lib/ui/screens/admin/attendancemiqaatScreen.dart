@@ -47,7 +47,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
       if (user != null && user.jamaat != null) {
         final userJamaat = user.jamaat!.toLowerCase();
         filtered = miqaats
-            .where((m) => (m.jamaat).toLowerCase() == userJamaat)
+            .where((m) => m.isInternational || (m.jamaat).toLowerCase() == userJamaat)
             .toList();
       }
 
@@ -275,9 +275,16 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: miqaat.isInternational
+              ? const Color(0xFFFFF8E1)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!, width: 1),
+          border: Border.all(
+            color: miqaat.isInternational
+                ? const Color(0xFFFFD54F)
+                : Colors.grey[300]!,
+            width: miqaat.isInternational ? 1.5 : 1,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,20 +317,29 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen> {
                   // Location (Jamaat)
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
+                      Icon(
+                        miqaat.isInternational ? Icons.public : Icons.location_on,
                         size: 16,
-                        color: Colors.orange,
+                        color: miqaat.isInternational
+                            ? const Color(0xFFB8860B)
+                            : Colors.orange,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          _isCaptain
-                              ? '${miqaat.jamaat} (${miqaat.jamiyat})'
-                              : miqaat.jamaat,
+                          miqaat.isInternational
+                              ? 'International Miqaat'
+                              : _isCaptain
+                                  ? '${miqaat.jamaat} (${miqaat.jamiyat})'
+                                  : miqaat.jamaat,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: miqaat.isInternational
+                                ? const Color(0xFFB8860B)
+                                : Colors.grey[600],
+                            fontWeight: miqaat.isInternational
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

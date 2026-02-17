@@ -52,7 +52,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (userData.jamaat != null && userData.jamaat!.isNotEmpty) {
           final jamaatLower = userData.jamaat!.toLowerCase();
           miqaats = miqaats
-              .where((m) => (m.jamaat).toLowerCase() == jamaatLower)
+              .where((m) => m.isInternational || (m.jamaat).toLowerCase() == jamaatLower)
               .toList();
         }
 
@@ -272,7 +272,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     title: miqaat.miqaatName,
                     dateRange:
                         'FROM ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)} (${miqaat.durationLabel})',
-                    location: '${miqaat.jamaat}, ${miqaat.jamiyat}',
+                    location: miqaat.isInternational
+                        ? 'International Miqaat'
+                        : '${miqaat.jamaat}, ${miqaat.jamiyat}',
                   ),
                 )),
         ],
@@ -318,12 +320,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: _isMiqaatCompleted(miqaat.tillDate)
             ? const Color(0xFFE8F5E9)
-
-            : Colors.white,
+            : miqaat.isInternational
+                ? const Color(0xFFFFF8E1) // Golden background for international
+                : Colors.white,
         borderRadius: BorderRadius.circular(18),
+        border: miqaat.isInternational
+            ? Border.all(color: const Color(0xFFFFD54F), width: 1.5)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: miqaat.isInternational
+                ? const Color(0xFFFFD54F).withOpacity(0.3)
+                : Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -339,25 +347,53 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF3E0),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        dateRange,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Color(0xFFE65100),
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: miqaat.isInternational
+                              ? const Color(0xFFFFF3E0)
+                              : const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          dateRange,
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Color(0xFFE65100),
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
+                    if (miqaat.isInternational) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFD54F), Color(0xFFFFA726)],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '🌍 International',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
                     const Spacer(),
                     _buildStatusIcon(miqaat),
                   ],
@@ -395,9 +431,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFF4A1C1C),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: miqaat.isInternational
+                  ? const Color(0xFFB8860B) // Dark golden for international
+                  : const Color(0xFF4A1C1C),
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
               ),
@@ -548,7 +586,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Location: ${miqaat.jamaat}, ${miqaat.jamiyat}',
+                      'Location: ${miqaat.isInternational ? 'International Miqaat' : '${miqaat.jamaat}, ${miqaat.jamiyat}'}',
                       style: const TextStyle(fontSize: 14),
                     ),
                     const SizedBox(height: 8),

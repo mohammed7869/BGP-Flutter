@@ -882,6 +882,7 @@ class MiqaatService {
 class Miqaat {
   final int id;
   final String miqaatName;
+  final String miqaatType; // "Local" or "International"
   final String jamaat;
   final String jamiyat;
   final DateTime fromDate;
@@ -905,6 +906,7 @@ class Miqaat {
   Miqaat({
     required this.id,
     required this.miqaatName,
+    this.miqaatType = 'Local',
     required this.jamaat,
     required this.jamiyat,
     required this.fromDate,
@@ -924,6 +926,8 @@ class Miqaat {
     this.khidmatDone,
     this.isReportSubmitted = false,
   });
+
+  bool get isInternational => miqaatType == 'International';
 
   factory Miqaat.fromJson(Map<String, dynamic> json) {
     final from = DateTime.parse(json['fromDate'] as String);
@@ -948,6 +952,7 @@ class Miqaat {
     return Miqaat(
       id: json['id'] as int? ?? 0,
       miqaatName: json['miqaatName'] as String? ?? '',
+      miqaatType: json['miqaatType'] as String? ?? 'Local',
       jamaat: json['jamaat'] as String? ?? '',
       jamiyat: json['jamiyat'] as String? ?? '',
       fromDate: from,
