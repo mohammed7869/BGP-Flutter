@@ -20,16 +20,23 @@ class _MembersListScreenState extends State<MembersListScreen> {
   final LocalStorageService _localStorage = LocalStorageService();
   final UserService _userService = UserService();
   List<EnrolledMember> _enrolledMembers = [];
-  List<EnrolledMember> _allMembers = []; // All members with status categories
+  List<EnrolledMember> _allMembers = [];
   List<Map<String, dynamic>> _jamaatMembers = [];
 
   bool _isLoading = false;
   bool _isCaptain = false;
   bool _isCheckingRole = true;
   String? _userJamaat;
-  
-  // Tab selection: 0 = Enrolled, 1 = Pending, 2 = Rejected
+
   int _selectedTab = 0;
+
+  // Brand Colors
+  static const Color _brandDark = Color(0xFF461D17);
+  static const Color _brandLight = Color(0xFFFFF7EF);
+  static const Color _goldAccent = Color(0xFFD4A574);
+  static const Color _goldShimmer = Color(0xFFE8C99B);
+  static const Color _textDark = Color(0xFF1A1A2E);
+  static const Color _textMuted = Color(0xFF6B7280);
 
   @override
   void initState() {
@@ -39,15 +46,10 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
   Future<void> _initializeData() async {
     await _checkUserRole();
-    
-    // Only proceed if user is Captain
     if (!_isCaptain) {
-      setState(() {
-        _isCheckingRole = false;
-      });
+      setState(() => _isCheckingRole = false);
       return;
     }
-    
     if (widget.miqaat != null) {
       _loadEnrolledMembers();
     } else {
@@ -58,7 +60,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
   Future<void> _checkUserRole() async {
     final userData = await _localStorage.getUserData();
     setState(() {
-      _isCaptain = userData?.roles == 2; // Captain role = 2
+      _isCaptain = userData?.roles == 2;
       _userJamaat = userData?.jamaat;
       _isCheckingRole = false;
     });
@@ -66,10 +68,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
   Future<void> _loadJamaatMembers() async {
     if (_userJamaat == null || _userJamaat!.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final members = await _userService.getMembersByJamaat(_userJamaat!);
@@ -78,14 +77,15 @@ class _MembersListScreenState extends State<MembersListScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load members: ${e.toString()}'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -94,236 +94,252 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
   Future<void> _loadEnrolledMembers() async {
     if (widget.miqaat == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // Use getAllMembersByMiqaatId to get members with status categories
       final members =
           await _miqaatService.getAllMembersByMiqaatId(widget.miqaat!.id);
       setState(() {
         _allMembers = members;
-        // Also populate _enrolledMembers for backward compatibility
-        _enrolledMembers = members.where((m) => m.statusCategory == 'Enrolled').toList();
+        _enrolledMembers =
+            members.where((m) => m.statusCategory == 'Enrolled').toList();
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load members: ${e.toString()}'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
     }
   }
 
-  // Get members filtered by selected tab
   List<EnrolledMember> get _filteredMembers {
     switch (_selectedTab) {
-      case 0: // Enrolled
-        return _allMembers.where((m) => m.statusCategory == 'Enrolled').toList();
-      case 1: // Pending
-        return _allMembers.where((m) => m.statusCategory == 'Pending').toList();
-      case 2: // Rejected
-        return _allMembers.where((m) => m.statusCategory == 'Rejected').toList();
+      case 0:
+        return _allMembers
+            .where((m) => m.statusCategory == 'Enrolled')
+            .toList();
+      case 1:
+        return _allMembers
+            .where((m) => m.statusCategory == 'Pending')
+            .toList();
+      case 2:
+        return _allMembers
+            .where((m) => m.statusCategory == 'Rejected')
+            .toList();
       default:
         return _allMembers;
     }
   }
 
+  String _calculateAge(dynamic dob) {
+    if (dob == null) return '';
+    try {
+      String dobStr = dob.toString();
+      final birthDate = DateTime.parse(dobStr);
+      final today = DateTime.now();
+      int age = today.year - birthDate.year;
+      if (today.month < birthDate.month ||
+          (today.month == birthDate.month && today.day < birthDate.day)) {
+        age--;
+      }
+      return age > 0 ? '$age yrs' : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String _formatContact(dynamic contact) {
+    if (contact == null) return '';
+    String phone = contact.toString();
+    if (phone.isEmpty) return '';
+    if (phone.startsWith('91') && phone.length > 10) {
+      return '+91 ${phone.substring(2)}';
+    }
+    return phone;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _brandLight,
       body: Column(
         children: [
-          // Custom AppBar with curved bottom
-          buildAppBarWithBackButton(context),
-
-          // Members List Content
-          Expanded(
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.miqaat != null
-                                    ? 'Approved Enrolled members to mark attendance'
-                                    : 'Members List',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                             
-                            ],
-                          ),
-                        ),
-                        if (_isCaptain && widget.miqaat == null)
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const AddUserScreen(),
-                                ),
-                              ).then((_) {
-                                // Reload members if needed
-                                if (widget.miqaat != null) {
-                                  _loadEnrolledMembers();
-                                } else {
-                                  _loadJamaatMembers();
-                                }
-                              });
-                            },
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Add Member'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4A1C1C),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (widget.miqaat != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _buildMiqaatInfoCard(widget.miqaat!),
-                    ),
-
-                  // Tab Capsules for miqaat context
-                  if (widget.miqaat != null && _isCaptain && !_isCheckingRole)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      child: _buildTabCapsules(),
-                    ),
-
-                  const SizedBox(height: 8),
-
-                  // Members List
-                  Expanded(
-                    child: _isCheckingRole
-                        ? const Center(child: CircularProgressIndicator())
-                        : !_isCaptain
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.block,
-                                        size: 64,
-                                        color: Colors.red[300],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      const Text(
-                                        'Only Captains can view this page',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'You do not have permission to access the members list.',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : _isLoading
-                                ? const Center(child: CircularProgressIndicator())
-                                : widget.miqaat != null
-                            ? (_filteredMembers.isEmpty
-                                ? Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(20.0),
-                                      child: Text(
-                                        _selectedTab == 0 
-                                            ? 'No enrolled members found'
-                                            : _selectedTab == 1 
-                                                ? 'No pending members found'
-                                                : 'No rejected members found',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 20),
-                                    itemCount: _filteredMembers.length,
-                                    itemBuilder: (context, index) {
-                                      final member = _filteredMembers[index];
-                                      return _buildMemberCard(
-                                        index + 1,
-                                        member,
-                                      );
-                                    },
-                                  ))
-                            : (_jamaatMembers.isEmpty
-                                ? const Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(20.0),
-                                      child: Text(
-                                        'No members found',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 20),
-                                    itemCount: _jamaatMembers.length,
-                                    itemBuilder: (context, index) {
-                                      final member = _jamaatMembers[index];
-                                      return _buildJamaatMemberCard(
-                                        index + 1,
-                                        member,
-                                      );
-                                    },
-                                  )),
-                  ),
+          // ── Premium Header ──
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF3A1410),
+                  _brandDark,
+                  Color(0xFF6B2F26),
                 ],
               ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x40461D17),
+                  blurRadius: 16,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new,
+                            color: Colors.white, size: 16),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Expanded(
+                      child: Text(
+                        widget.miqaat != null
+                            ? 'Miqaat Members'
+                            : 'Members List',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Content ──
+          Expanded(
+            child: Column(
+              children: [
+                // Top info bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.miqaat != null
+                                  ? 'Enrolled members for attendance'
+                                  : 'My Jamaat Members',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: _textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.miqaat != null
+                                  ? '${_filteredMembers.length} members'
+                                  : '${_jamaatMembers.length} members',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_isCaptain && widget.miqaat == null)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AddUserScreen(),
+                              ),
+                            ).then((_) {
+                              if (widget.miqaat != null) {
+                                _loadEnrolledMembers();
+                              } else {
+                                _loadJamaatMembers();
+                              }
+                            });
+                          },
+                          icon: const Icon(Icons.person_add, size: 16),
+                          label: const Text('Add',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _brandDark,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 4,
+                            shadowColor: _brandDark.withOpacity(0.3),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                if (widget.miqaat != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                    child: _buildMiqaatInfoCard(widget.miqaat!),
+                  ),
+
+                if (widget.miqaat != null &&
+                    _isCaptain &&
+                    !_isCheckingRole)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                    child: _buildTabCapsules(),
+                  ),
+
+                const SizedBox(height: 12),
+
+                // Members List
+                Expanded(
+                  child: _isCheckingRole
+                      ? const Center(
+                          child: CircularProgressIndicator(color: _brandDark))
+                      : !_isCaptain
+                          ? _buildAccessDenied()
+                          : _isLoading
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                      color: _brandDark))
+                              : widget.miqaat != null
+                                  ? _buildMiqaatMembersList()
+                                  : _buildJamaatMembersList(),
+                ),
+              ],
             ),
           ),
         ],
@@ -331,17 +347,71 @@ class _MembersListScreenState extends State<MembersListScreen> {
     );
   }
 
+  // ─── Access Denied ────────────────────────────────────────────
+
+  Widget _buildAccessDenied() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.red.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.block, size: 48, color: Colors.red[400]),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Only Captains can view this page',
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w700, color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You do not have permission to access the members list.',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Tab Capsules ─────────────────────────────────────────────
+
   Widget _buildTabCapsules() {
-    final enrolledCount = _allMembers.where((m) => m.statusCategory == 'Enrolled').length;
-    final pendingCount = _allMembers.where((m) => m.statusCategory == 'Pending').length;
-    final rejectedCount = _allMembers.where((m) => m.statusCategory == 'Rejected').length;
+    final enrolledCount =
+        _allMembers.where((m) => m.statusCategory == 'Enrolled').length;
+    final pendingCount =
+        _allMembers.where((m) => m.statusCategory == 'Pending').length;
+    final rejectedCount =
+        _allMembers.where((m) => m.statusCategory == 'Rejected').length;
 
     return Row(
       children: [
-        _buildTabCapsule(0, 'Enrolled', enrolledCount, Colors.green),
-        const SizedBox(width: 4),
+        _buildTabCapsule(0, 'Enrolled', enrolledCount, const Color(0xFF2E7D32)),
+        const SizedBox(width: 6),
         _buildTabCapsule(1, 'Pending', pendingCount, Colors.orange),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         _buildTabCapsule(2, 'Rejected', rejectedCount, Colors.red),
       ],
     );
@@ -351,41 +421,41 @@ class _MembersListScreenState extends State<MembersListScreen> {
     final isSelected = _selectedTab == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTab = index;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        onTap: () => setState(() => _selectedTab = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF4A1C1C) : Colors.grey[200],
-            borderRadius: BorderRadius.circular(20),
+            color: isSelected ? _brandDark : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? const Color(0xFF4A1C1C) : Colors.grey[300]!,
-              width: 1,
+              color: isSelected ? _brandDark : Colors.grey[300]!,
             ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                        color: _brandDark.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2)),
+                  ]
+                : [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 5),
               Flexible(
                 child: Text(
                   '$label ($count)',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : Colors.black87,
+                    color: isSelected ? Colors.white : _textDark,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -397,25 +467,14 @@ class _MembersListScreenState extends State<MembersListScreen> {
     );
   }
 
+  // ─── Miqaat Info Card ─────────────────────────────────────────
+
   String _formatDate(DateTime date) {
     final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final day = date.day.toString().padLeft(2, '0');
-    final month = months[date.month - 1];
-    final year = date.year;
-    return '$day $month $year';
+    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
   }
 
   Widget _buildMiqaatInfoCard(Miqaat miqaat) {
@@ -424,81 +483,115 @@ class _MembersListScreenState extends State<MembersListScreen> {
     final dateDisplay = fromDateStr == tillDateStr
         ? fromDateStr
         : '$fromDateStr - $tillDateStr';
-    final durationDisplay = miqaat.durationLabel;
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF4A1C1C), Color(0xFF6B2D2D)],
+          colors: [_brandDark, Color(0xFF6B2D2D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4A1C1C).withOpacity(0.3),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: _brandDark.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Miqaat Name
           Text(
             miqaat.miqaatName,
             style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+                fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
-          // Date Row
+          const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.calendar_today, color: Colors.white70, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                dateDisplay,
-                style: const TextStyle(fontSize: 12, color: Colors.white),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // Days and Location Row
-          Row(
-            children: [
-              // Days
-              const Icon(Icons.access_time, color: Colors.white70, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                durationDisplay,
-                style: const TextStyle(fontSize: 12, color: Colors.white),
-              ),
-              const SizedBox(width: 20),
-              // Location
-              const Icon(Icons.location_on, color: Colors.white70, size: 14),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  '${miqaat.jamaat}, ${miqaat.jamiyat}',
-                  style: const TextStyle(fontSize: 12, color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              const Icon(Icons.calendar_today, color: Colors.white70, size: 13),
+              const SizedBox(width: 5),
+              Text(dateDisplay,
+                  style:
+                      const TextStyle(fontSize: 12, color: Colors.white)),
+              const SizedBox(width: 16),
+              const Icon(Icons.access_time, color: Colors.white70, size: 13),
+              const SizedBox(width: 5),
+              Text(miqaat.durationLabel,
+                  style:
+                      const TextStyle(fontSize: 12, color: Colors.white)),
             ],
           ),
         ],
       ),
     );
   }
+
+  // ─── Miqaat Members List ──────────────────────────────────────
+
+  Widget _buildMiqaatMembersList() {
+    if (_filteredMembers.isEmpty) {
+      return _buildEmptyState(
+        _selectedTab == 0
+            ? 'No enrolled members'
+            : _selectedTab == 1
+                ? 'No pending members'
+                : 'No rejected members',
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      physics: const BouncingScrollPhysics(),
+      itemCount: _filteredMembers.length,
+      itemBuilder: (context, index) =>
+          _buildMemberCard(index + 1, _filteredMembers[index]),
+    );
+  }
+
+  // ─── Jamaat Members List ──────────────────────────────────────
+
+  Widget _buildJamaatMembersList() {
+    if (_jamaatMembers.isEmpty) {
+      return _buildEmptyState('No members found');
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      physics: const BouncingScrollPhysics(),
+      itemCount: _jamaatMembers.length,
+      itemBuilder: (context, index) =>
+          _buildJamaatMemberCard(index + 1, _jamaatMembers[index]),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.people_outline,
+                size: 48, color: Colors.grey[400]),
+          ),
+          const SizedBox(height: 16),
+          Text(message,
+              style: TextStyle(fontSize: 15, color: _textMuted, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Miqaat Member Card ───────────────────────────────────────
 
   Widget _buildMemberCard(int number, EnrolledMember member) {
     final finalStatus = member.finalStatus;
@@ -506,172 +599,410 @@ class _MembersListScreenState extends State<MembersListScreen> {
     final isRejected = finalStatus == 'Rejected';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _brandDark.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: _goldAccent.withOpacity(0.15)),
       ),
       child: Row(
         children: [
-          // Number
-          Text(
-            number.toString().padLeft(2, '0'),
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // Avatar
+          // Number badge
           Container(
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
-              shape: BoxShape.circle,
+              color: _brandDark.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.person, color: Colors.grey, size: 18),
+            child: Center(
+              child: Text(
+                number.toString().padLeft(2, '0'),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _brandDark,
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 10),
-
-          // Name and Status
+          // Avatar
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: _goldAccent.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.person, color: _brandDark.withOpacity(0.4), size: 20),
+          ),
+          const SizedBox(width: 10),
+          // Name + Status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   member.fullName,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: _textDark,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                // Show captain approval status only for Enrolled members
                 if (member.statusCategory == 'Enrolled') ...[
+                  const SizedBox(height: 2),
                   if (isApproved)
-                    const Text(
-                      'Captain Approved',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.green,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    )
+                    _buildStatusChip('Captain Approved', Colors.green)
                   else if (isRejected)
-                    const Text(
-                      'Captain Rejected',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.red,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    )
+                    _buildStatusChip('Captain Rejected', Colors.red)
                   else
-                    const Text(
-                      'Pending Captain Approval',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _buildStatusChip('Pending Approval', Colors.orange),
                 ],
               ],
             ),
           ),
-
-          // Info Icon (show enrolled days)
+          // Info button
           if (widget.miqaat != null)
-            InkWell(
-              onTap: () => _showEnrollmentDaysDialog(member),
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.info_outline,
-                  color: Colors.blue,
-                  size: 16,
-                ),
-              ),
-            ),
-
-          // Action Buttons (only show for Enrolled tab, and if not yet approved/rejected)
-          if (widget.miqaat != null && _selectedTab == 0 && !isApproved && !isRejected) ...[
-            const SizedBox(width: 6),
-            InkWell(
-              onTap: () => _handleApprove(member),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 14,
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            InkWell(
-              onTap: () => _handleReject(member),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 14,
-                ),
-              ),
-            ),
+            _buildCircleBtn(Icons.info_outline, Colors.blue, () => _showEnrollmentDaysDialog(member)),
+          // Approve/Reject
+          if (widget.miqaat != null &&
+              _selectedTab == 0 &&
+              !isApproved &&
+              !isRejected) ...[
+            const SizedBox(width: 4),
+            _buildCircleBtn(Icons.check, Colors.green, () => _handleApprove(member)),
+            const SizedBox(width: 4),
+            _buildCircleBtn(Icons.close, Colors.red, () => _handleReject(member)),
           ],
         ],
       ),
     );
   }
 
+  Widget _buildStatusChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircleBtn(IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 15),
+      ),
+    );
+  }
+
+  // ─── Jamaat Member Card (PREMIUM) ─────────────────────────────
+
+  Widget _buildJamaatMemberCard(int number, Map<String, dynamic> member) {
+    final fullName = member['fullName'] as String? ??
+        member['FullName'] as String? ??
+        'N/A';
+    final contact = member['contact'] as String? ??
+        member['Contact'] as String?;
+    final profile = member['profile'] as String? ??
+        member['Profile'] as String?;
+    final isApproved = member['isApproved'] as bool? ??
+        member['IsApproved'] as bool? ??
+        true;
+    final rank = member['rank'] as String? ??
+        member['Rank'] as String? ??
+        '';
+    final dob = member['dateOfBirth'] ?? member['DateOfBirth'] ?? member['date_of_birth'];
+    final age = member['age'] ?? member['Age'];
+
+    final formattedContact = _formatContact(contact);
+    String ageDisplay = _calculateAge(dob);
+    if (ageDisplay.isEmpty && age != null) {
+      ageDisplay = '$age yrs';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _brandDark.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: _goldAccent.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          // Number badge
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_brandDark.withOpacity(0.1), _goldAccent.withOpacity(0.1)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                number.toString().padLeft(2, '0'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _brandDark,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Profile Image
+          _buildProfileImage(profile),
+          const SizedBox(width: 12),
+
+          // Info section
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        fullName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: _textDark,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (ageDisplay.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: _goldAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          ageDisplay,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: _brandDark,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // Contact + Rank row
+                Row(
+                  children: [
+                    if (formattedContact.isNotEmpty) ...[
+                      Icon(Icons.phone_outlined,
+                          size: 12, color: _textMuted),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          formattedContact,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _textMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                    if (rank.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _brandDark.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          rank,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: _brandDark.withOpacity(0.7),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                // Approval status
+                if (!isApproved) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Awaiting Admin Approval',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Profile Image ────────────────────────────────────────────
+
+  Widget _buildProfileImage(String? profilePath) {
+    String? imageUrl;
+    if (profilePath != null && profilePath.isNotEmpty) {
+      if (profilePath.startsWith('http://') ||
+          profilePath.startsWith('https://')) {
+        imageUrl = profilePath;
+      } else {
+        String cleanPath =
+            profilePath.startsWith('/') ? profilePath.substring(1) : profilePath;
+        if (!cleanPath.startsWith('bgp_uploads/')) {
+          cleanPath = 'bgp_uploads/profile/$cleanPath';
+        }
+        imageUrl = '${ApiConstants.baseUrl}/$cleanPath';
+      }
+    }
+
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [_goldAccent.withOpacity(0.3), _goldShimmer.withOpacity(0.2)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _goldAccent.withOpacity(0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Container(
+        margin: const EdgeInsets.all(2),
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+        ),
+        child: imageUrl != null
+            ? ClipOval(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  width: 40,
+                  height: 40,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.person,
+                    color: _brandDark.withOpacity(0.4),
+                    size: 22,
+                  ),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 1.5, color: _brandDark),
+                      ),
+                    );
+                  },
+                ),
+              )
+            : Icon(Icons.person, color: _brandDark.withOpacity(0.4), size: 22),
+      ),
+    );
+  }
+
+  // ─── Handlers ─────────────────────────────────────────────────
+
   Future<void> _handleApprove(EnrolledMember member) async {
     if (widget.miqaat == null) return;
-
     try {
       await _miqaatService.updateFinalStatus(
         miqaatId: widget.miqaat!.id,
         memberId: member.id,
         finalStatus: 'Approved',
       );
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Member approved successfully'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Member approved successfully'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF2E7D32),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
-        // Reload members
         await _loadEnrolledMembers();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to approve member: ${e.toString()}'),
+            content: Text('Failed to approve: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -681,29 +1012,29 @@ class _MembersListScreenState extends State<MembersListScreen> {
 
   Future<void> _handleReject(EnrolledMember member) async {
     if (widget.miqaat == null) return;
-
     try {
       await _miqaatService.updateFinalStatus(
         miqaatId: widget.miqaat!.id,
         memberId: member.id,
         finalStatus: 'Rejected',
       );
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Member rejected successfully'),
+          SnackBar(
+            content: const Text('Member rejected'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
-        // Reload members
         await _loadEnrolledMembers();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to reject member: ${e.toString()}'),
+            content: Text('Failed to reject: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -717,9 +1048,8 @@ class _MembersListScreenState extends State<MembersListScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: _brandDark)),
     );
 
     try {
@@ -729,7 +1059,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
       );
 
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pop(); // Close loading
 
         final approvedDays =
             enrollmentDays.where((d) => d.status == 'Approved').toList();
@@ -737,12 +1067,11 @@ class _MembersListScreenState extends State<MembersListScreen> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Text(
               member.fullName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             content: SizedBox(
               width: double.maxFinite,
@@ -750,20 +1079,23 @@ class _MembersListScreenState extends State<MembersListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Enrolled Days: ${approvedDays.length}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _brandDark.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Enrolled Days: ${approvedDays.length}',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 12),
                   if (enrollmentDays.isEmpty)
-                    const Text(
-                      'No enrollment data available',
-                      style: TextStyle(color: Colors.grey),
-                    )
+                    Text('No enrollment data',
+                        style: TextStyle(color: _textMuted))
                   else
                     ConstrainedBox(
                       constraints: BoxConstraints(
@@ -796,59 +1128,52 @@ class _MembersListScreenState extends State<MembersListScreen> {
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              color: statusColor.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: statusColor.withOpacity(0.3),
-                              ),
+                                  color: statusColor.withOpacity(0.2)),
                             ),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Day ${day.day}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Text(
-                                      day.miqaatDate,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
+                                    Text('Day ${day.day}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13)),
+                                    Text(day.miqaatDate,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[600])),
                                   ],
                                 ),
                                 Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.end,
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
+                                          horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
                                         color: statusColor,
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
                                       ),
-                                      child: Text(
-                                        statusText,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
+                                      child: Text(statusText,
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500)),
                                     ),
-                                    // Show captain status only for Enrolled users (when member enrolled themselves)
-                                    if (day.finalStatus != null && day.status == 'Approved')
+                                    if (day.finalStatus != null &&
+                                        day.status == 'Approved')
                                       Padding(
-                                        padding: const EdgeInsets.only(top: 4),
+                                        padding:
+                                            const EdgeInsets.only(top: 4),
                                         child: Text(
                                           'Captain: ${day.finalStatus}',
                                           style: TextStyle(
@@ -872,7 +1197,8 @@ class _MembersListScreenState extends State<MembersListScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+                child: const Text('Close',
+                    style: TextStyle(color: _brandDark, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -880,7 +1206,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load enrollment days: ${e.toString()}'),
@@ -889,121 +1215,5 @@ class _MembersListScreenState extends State<MembersListScreen> {
         );
       }
     }
-  }
-
-  Widget _buildJamaatMemberCard(int number, Map<String, dynamic> member) {
-    final fullName = member['fullName'] as String? ?? member['FullName'] as String? ?? 'N/A';
-    final contact = member['contact'] as String? ?? member['Contact'] as String? ?? 'N/A';
-    final profile = member['profile'] as String? ?? member['Profile'] as String?;
-    final isApproved = member['isApproved'] as bool? ?? member['IsApproved'] as bool? ?? true;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
-      ),
-      child: Row(
-        children: [
-          // Number
-          Text(
-            number.toString().padLeft(2, '0'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Profile Image
-          _buildProfileImage(profile),
-          const SizedBox(width: 12),
-
-          // Name, Contact and Status
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fullName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (contact != 'N/A' && contact.isNotEmpty)
-                  Text(
-                    contact,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                if (!isApproved)
-                  const Text(
-                    'Awaiting Admin Approval',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileImage(String? profilePath) {
-    String? imageUrl;
-    if (profilePath != null && profilePath.isNotEmpty) {
-      if (profilePath.startsWith('http://') || profilePath.startsWith('https://')) {
-        imageUrl = profilePath;
-      } else {
-        String cleanPath = profilePath.startsWith('/') 
-            ? profilePath.substring(1) 
-            : profilePath;
-        if (!cleanPath.startsWith('bgp_uploads/')) {
-          cleanPath = 'bgp_uploads/profile/$cleanPath';
-        }
-        imageUrl = '${ApiConstants.baseUrl}/$cleanPath';
-      }
-    }
-
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        shape: BoxShape.circle,
-      ),
-      child: imageUrl != null
-          ? ClipOval(
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.person,
-                  color: Colors.grey,
-                  size: 24,
-                ),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                },
-              ),
-            )
-          : const Icon(Icons.person, color: Colors.grey, size: 24),
-    );
   }
 }

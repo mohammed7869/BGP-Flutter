@@ -1,9 +1,9 @@
+import 'package:burhaniguardsapp/core/services/auth_service.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-// Temporarily disabled PWA install due to web compatibility issues
-// import 'package:pwa_install/pwa_install.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,28 +14,12 @@ void main() {
     debugPrint('Flutter Error: ${details.exception}');
   };
 
-  // PWA install setup disabled temporarily due to web compatibility issues
-  // The pwa_install package is causing initialization errors on web
-  // TODO: Re-enable once pwa_install package is updated or alternative solution is found
-  /*
-  if (kIsWeb) {
-    try {
-      PWAInstall().setup(installCallback: () {
-        debugPrint('APP INSTALLED!');
-      });
-    } catch (e) {
-      debugPrint('PWA Install setup error: $e');
-    }
-  }
-  */
-
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -46,18 +30,79 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         textTheme: _getTextTheme(),
       ),
-      home: const UnifiedLoginScreen(),
+      home: const SplashScreen(),
     );
   }
 
-  // Helper method to get text theme with fallback
   static TextTheme _getTextTheme() {
     try {
       return GoogleFonts.poppinsTextTheme();
     } catch (e) {
       debugPrint('Error loading Google Fonts: $e');
-      // Return default text theme as fallback
       return Typography.material2021().black;
     }
+  }
+}
+
+/// Splash screen that checks login status and navigates accordingly
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    try {
+      final authService = AuthService();
+      final isLoggedIn = await authService.isLoggedIn();
+      final userData = await authService.getStoredUser();
+
+      if (!mounted) return;
+
+      if (isLoggedIn && userData != null) {
+        // User is already logged in, go directly to dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AdminDashboardScreen(),
+          ),
+        );
+      } else {
+        // User is not logged in, show login screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const UnifiedLoginScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error checking login status: $e');
+      if (!mounted) return;
+      // On error, default to login screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const UnifiedLoginScreen(),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
 }

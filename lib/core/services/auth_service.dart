@@ -161,6 +161,89 @@ class AuthService {
     return await _localStorage.isLoggedIn();
   }
 
+  /// Update user profile (email, contact, dateOfBirth)
+  Future<bool> updateProfile({
+    String? email,
+    String? contact,
+    String? dateOfBirth,
+  }) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateProfile}');
+
+      final body = <String, dynamic>{};
+      if (email != null) body['email'] = email;
+      if (contact != null) body['contact'] = contact;
+      if (dateOfBirth != null) body['dateOfBirth'] = dateOfBirth;
+
+      final response = await http
+          .post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // Update local storage with new data
+        final userData = await _localStorage.getUserData();
+        if (userData != null) {
+          final updatedUserData = UserData(
+            id: userData.id,
+            profile: userData.profile,
+            itsId: userData.itsId,
+            fullName: userData.fullName,
+            email: email ?? userData.email,
+            rank: userData.rank,
+            roles: userData.roles,
+            jamiyat: userData.jamiyat,
+            jamaat: userData.jamaat,
+            gender: userData.gender,
+            age: userData.age,
+            contact: contact ?? userData.contact,
+            dateOfBirth: dateOfBirth ?? userData.dateOfBirth,
+            role: userData.role,
+          );
+          await _localStorage.saveUserData(updatedUserData);
+        }
+        return true;
+      } else {
+        String errorMessage = 'Failed to update profile.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          }
+        } catch (_) {}
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception(
+            'Unable to connect to server. Please check your connection.');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
+
   /// Logout - clear all stored data
   Future<void> logout() async {
     await _localStorage.clearAll();

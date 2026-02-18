@@ -3,6 +3,7 @@ import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/membersListScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class AddUserScreen extends StatefulWidget {
   const AddUserScreen({Key? key}) : super(key: key);
@@ -11,7 +12,8 @@ class AddUserScreen extends StatefulWidget {
   State<AddUserScreen> createState() => _AddUserScreenState();
 }
 
-class _AddUserScreenState extends State<AddUserScreen> {
+class _AddUserScreenState extends State<AddUserScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final UserService _userService = UserService();
   final MiqaatService _miqaatService = MiqaatService();
@@ -23,21 +25,35 @@ class _AddUserScreenState extends State<AddUserScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _passwordController =
+      TextEditingController(text: '123456');
 
   String? _selectedRank = 'Member';
   String? _selectedGender;
   String? _selectedJamiyat;
   String? _selectedJamaat;
+  DateTime? _selectedDOB;
 
   List<JamiyatItem> _jamiyats = [];
   List<JamaatItem> _jamaats = [];
   bool _isLoadingJamiyatJamaat = false;
 
-  // Captain-specific variables
+  // Captain-specific
   bool _isCaptain = false;
   String? _captainJamiyat;
   String? _captainJamaat;
+
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+
+  // Brand Colors
+  static const Color _brandDark = Color(0xFF461D17);
+  static const Color _brandLight = Color(0xFFFFF7EF);
+  static const Color _goldAccent = Color(0xFFD4A574);
+  static const Color _goldShimmer = Color(0xFFE8C99B);
+  static const Color _textDark = Color(0xFF1A1A2E);
+  static const Color _textMuted = Color(0xFF6B7280);
 
   final List<String> _ranks = [
     'Member',
@@ -55,16 +71,78 @@ class _AddUserScreenState extends State<AddUserScreen> {
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnim = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
     _loadJamiyatJamaat();
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _itsIdController.dispose();
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _contactController.dispose();
+    _ageController.dispose();
+    _dobController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _calculateAge() {
+    if (_selectedDOB == null) {
+      _ageController.text = '';
+      return;
+    }
+    final today = DateTime.now();
+    int age = today.year - _selectedDOB!.year;
+    if (today.month < _selectedDOB!.month ||
+        (today.month == _selectedDOB!.month && today.day < _selectedDOB!.day)) {
+      age--;
+    }
+    _ageController.text = age > 0 ? age.toString() : '0';
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDOB ?? DateTime(2000, 1, 1),
+      firstDate: DateTime(1940),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _brandDark,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _selectedDOB = pickedDate;
+        _dobController.text = DateFormat('dd MMM yyyy').format(pickedDate);
+        _calculateAge();
+      });
+    }
   }
 
   Future<void> _loadJamiyatJamaat() async {
-    setState(() {
-      _isLoadingJamiyatJamaat = true;
-    });
+    setState(() => _isLoadingJamiyatJamaat = true);
 
     try {
-      // Load current user data to check if captain
       final userData = await _localStorage.getUserData();
       _isCaptain = userData?.roles == 2;
       _captainJamiyat = userData?.jamiyat;
@@ -76,8 +154,6 @@ class _AddUserScreenState extends State<AddUserScreen> {
           _jamiyats = response.jamiyats;
           _jamaats = response.jamaats;
           _isLoadingJamiyatJamaat = false;
-
-          // If captain, auto-select their jamiyat and jamaat
           if (_isCaptain) {
             _selectedJamiyat = _captainJamiyat;
             _selectedJamaat = _captainJamaat;
@@ -85,20 +161,14 @@ class _AddUserScreenState extends State<AddUserScreen> {
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoadingJamiyatJamaat = false;
-      });
+      setState(() => _isLoadingJamiyatJamaat = false);
     }
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       await _userService.createMember(
@@ -115,25 +185,34 @@ class _AddUserScreenState extends State<AddUserScreen> {
         age: _ageController.text.trim().isNotEmpty
             ? int.tryParse(_ageController.text.trim())
             : null,
-        password: _passwordController.text.trim().isNotEmpty
-            ? _passwordController.text.trim()
+        password: '123456',
+        dateOfBirth: _selectedDOB != null
+            ? DateFormat('yyyy-MM-dd').format(_selectedDOB!)
             : null,
       );
 
       if (mounted) {
-        // Check if current user is Captain (role = 2)
         final userData = await _localStorage.getUserData();
         final isCaptain = userData?.roles == 2;
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isCaptain 
-                ? 'Member Created Awaiting Admin Approval'
-                : 'Member created successfully'),
-            backgroundColor: Colors.green,
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Text(isCaptain
+                    ? 'Member Created – Awaiting Admin Approval'
+                    : 'Member created successfully'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF2E7D32),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
-        Navigator.pop(context, true); // Return true to indicate success
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -141,142 +220,257 @@ class _AddUserScreenState extends State<AddUserScreen> {
           SnackBar(
             content: Text('Failed to create member: ${e.toString()}'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _brandLight,
       body: Column(
         children: [
-          // Custom AppBar with curved bottom
+          // ── Premium Header ──
           Container(
             decoration: const BoxDecoration(
-              color: Color(0xFF4A1C1C),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF3A1410),
+                  _brandDark,
+                  Color(0xFF6B2F26),
+                ],
               ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x40461D17),
+                  blurRadius: 16,
+                  offset: Offset(0, 6),
+                ),
+              ],
             ),
             child: SafeArea(
               bottom: false,
-              child: Column(
-                children: [
-                  // Header buttons
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon:
-                              const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        const Text(
-                          'Add Member',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 48), // Balance the back button
-                      ],
+                        child: const Icon(Icons.arrow_back_ios_new,
+                            color: Colors.white, size: 16),
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    const Expanded(
+                      child: Text(
+                        'Add New Member',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
               ),
             ),
           ),
 
-          // Form Container
+          // ── Form Content ──
           Expanded(
-            child: Container(
-              color: Colors.white,
+            child: FadeTransition(
+              opacity: _fadeAnim,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Member Information',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF4A1C1C),
-                        ),
+                      // Section Header
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _brandDark.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.person_add_outlined,
+                                color: _brandDark, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Member Information',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: _textDark,
+                                ),
+                              ),
+                              Text(
+                                'Fill in the details below',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: _textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
-                      _buildTextField('ITS ID *', _itsIdController,
-                          keyboardType: TextInputType.number, maxLength: 8),
-                      const SizedBox(height: 16),
-                      _buildTextField('Full Name *', _fullNameController),
-                      const SizedBox(height: 16),
-                      _buildTextField('Email *', _emailController,
-                          keyboardType: TextInputType.emailAddress),
-                      const SizedBox(height: 16),
-                      _buildTextField('Contact', _contactController,
-                          keyboardType: TextInputType.phone),
-                      const SizedBox(height: 16),
-                      _buildDropdownField('Rank', _selectedRank, _ranks,
-                          (value) => setState(() => _selectedRank = value)),
-                      const SizedBox(height: 16),
-                      _buildDropdownField('Gender', _selectedGender, _genders,
-                          (value) => setState(() => _selectedGender = value)),
-                      const SizedBox(height: 16),
-                      _buildTextField('Age', _ageController,
-                          keyboardType: TextInputType.number),
-                      const SizedBox(height: 16),
-                      _buildJamiyatDropdown(),
-                      const SizedBox(height: 16),
-                      _buildJamaatDropdown(),
-                      const SizedBox(height: 16),
-                      _buildTextField('Password', _passwordController,
-                          obscureText: true),
-                      const SizedBox(height: 30),
+
+                      // Card wrapper for the form fields
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _brandDark.withOpacity(0.05),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                              color: _goldAccent.withOpacity(0.15)),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildPremiumField(
+                              'ITS ID *',
+                              _itsIdController,
+                              icon: Icons.fingerprint,
+                              keyboardType: TextInputType.number,
+                              maxLength: 8,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildPremiumField(
+                              'Full Name *',
+                              _fullNameController,
+                              icon: Icons.person_outline,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildPremiumField(
+                              'Email *',
+                              _emailController,
+                              icon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildPremiumField(
+                              'Contact',
+                              _contactController,
+                              icon: Icons.phone_outlined,
+                              keyboardType: TextInputType.phone,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildPremiumDropdown(
+                              'Rank',
+                              _selectedRank,
+                              _ranks,
+                              Icons.military_tech_outlined,
+                              (v) => setState(() => _selectedRank = v),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildPremiumDropdown(
+                              'Gender',
+                              _selectedGender,
+                              _genders,
+                              Icons.wc_outlined,
+                              (v) => setState(() => _selectedGender = v),
+                            ),
+                            const SizedBox(height: 14),
+                            // Date of Birth picker
+                            _buildDOBField(),
+                            const SizedBox(height: 14),
+                            // Age (auto-calculated, read-only)
+                            _buildPremiumField(
+                              'Age',
+                              _ageController,
+                              icon: Icons.calendar_today_outlined,
+                              readOnly: true,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildJamiyatDropdown(),
+                            const SizedBox(height: 14),
+                            _buildJamaatDropdown(),
+                            const SizedBox(height: 14),
+                            // Password (locked)
+                            _buildLockedPasswordField(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Submit button
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
+                        height: 52,
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _submitForm,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4A1C1C),
-                            disabledBackgroundColor: Colors.grey,
+                            backgroundColor: _brandDark,
+                            disabledBackgroundColor: Colors.grey[400],
+                            foregroundColor: Colors.white,
+                            elevation: 6,
+                            shadowColor: _brandDark.withOpacity(0.4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: _isLoading
                               ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
+                                  height: 22,
+                                  width: 22,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor:
-                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
                                   ),
                                 )
-                              : const Text(
-                                  'Add Member',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.person_add, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Add Member',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                         ),
                       ),
@@ -291,211 +485,338 @@ class _AddUserScreenState extends State<AddUserScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      {TextInputType? keyboardType, bool obscureText = false, int? maxLength}) {
+  // ─── Premium Text Field ───────────────────────────────────────
+
+  Widget _buildPremiumField(
+    String label,
+    TextEditingController controller, {
+    IconData icon = Icons.edit,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+    int? maxLength,
+    bool readOnly = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      maxLength: maxLength,
+      readOnly: readOnly,
+      style: TextStyle(
+        color: readOnly ? _textMuted : _textDark,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(
+          color: _textMuted,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        prefixIcon: Icon(icon, size: 20, color: _brandDark.withOpacity(0.6)),
+        filled: true,
+        fillColor: readOnly ? Colors.grey[100] : _brandLight.withOpacity(0.5),
+        counterText: '',
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _goldAccent.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _brandDark, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      ),
+      validator: (value) {
+        if (label.contains('*') && (value == null || value.isEmpty)) {
+          return 'This field is required';
+        }
+        if (label.contains('ITS ID') && value != null && value.isNotEmpty) {
+          if (!RegExp(r'^\d+$').hasMatch(value)) {
+            return 'Only numerical values are allowed';
+          }
+          if (value.length < 8) return 'ITS ID must be exactly 8 digits';
+          if (value.length > 8) return 'ITS ID must be maximum 8 characters';
+        }
+        if (label.contains('Email') && value != null && value.isNotEmpty) {
+          if (!value.contains('@') || !value.contains('.')) {
+            return 'Please enter a valid email';
+          }
+        }
+        return null;
+      },
+    );
+  }
+
+  // ─── DOB Field ────────────────────────────────────────────────
+
+  Widget _buildDOBField() {
+    return GestureDetector(
+      onTap: _pickDateOfBirth,
+      child: AbsorbPointer(
+        child: TextFormField(
+          controller: _dobController,
+          style: const TextStyle(
+            color: _textDark,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+          decoration: InputDecoration(
+            labelText: 'Date of Birth',
+            labelStyle: const TextStyle(
+              color: _textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: Icon(Icons.cake_outlined,
+                size: 20, color: _brandDark.withOpacity(0.6)),
+            suffixIcon: Icon(Icons.calendar_month_outlined,
+                size: 20, color: _goldAccent),
+            filled: true,
+            fillColor: _brandLight.withOpacity(0.5),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: _goldAccent.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _brandDark, width: 1.5),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            hintText: 'Select date of birth',
+            hintStyle: const TextStyle(
+              color: _textMuted,
+              fontWeight: FontWeight.w400,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Locked Password Field ────────────────────────────────────
+
+  Widget _buildLockedPasswordField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          maxLength: maxLength,
+          controller: _passwordController,
+          obscureText: true,
+          enabled: false,
+          style: const TextStyle(
+            color: _textMuted,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
           decoration: InputDecoration(
-            label: Text(label),
+            labelText: 'Password (Default)',
+            labelStyle: const TextStyle(
+              color: _textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon:
+                Icon(Icons.lock_outline, size: 20, color: _textMuted),
+            suffixIcon:
+                Icon(Icons.lock, size: 18, color: _goldAccent),
             filled: true,
-            fillColor: Colors.white,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.red, width: 1),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.red, width: 1),
+            fillColor: Colors.grey[100],
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.grey[300]!),
             ),
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
           ),
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w500,
-          ),
-          validator: (value) {
-            if (label.contains('*') && (value == null || value.isEmpty)) {
-              return 'This field is required';
-            }
-            if (label.contains('ITS ID') && value != null && value.isNotEmpty) {
-              // Validate ITS ID must be exactly 8 digits (same as login screen)
-              if (!RegExp(r'^\d+$').hasMatch(value)) {
-                return 'Only numerical values are allowed';
-              }
-              if (value.length < 8) {
-                return 'ITS ID must be exactly 8 digits';
-              }
-              if (value.length > 8) {
-                return 'ITS ID must be maximum 8 characters';
-              }
-            }
-            if (label.contains('Email') && value != null && value.isNotEmpty) {
-              if (!value.contains('@') || !value.contains('.')) {
-                return 'Please enter a valid email';
-              }
-            }
-            return null;
-          },
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Icon(Icons.info_outline, size: 13, color: _goldAccent),
+            const SizedBox(width: 4),
+            Text(
+              'Default password: 123456',
+              style: TextStyle(
+                fontSize: 11,
+                color: _textMuted,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildDropdownField(String label, String? value, List<String> items,
-      Function(String?) onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DropdownButtonFormField<String>(
-          value: value,
-          decoration: InputDecoration(
-            label: Text(label),
-            filled: true,
-            fillColor: Colors.white,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-          ),
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(item),
-            );
-          }).toList(),
-          onChanged: onChanged,
+  // ─── Premium Dropdown ─────────────────────────────────────────
+
+  Widget _buildPremiumDropdown(String label, String? value,
+      List<String> items, IconData icon, Function(String?) onChanged) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      style: const TextStyle(
+        color: _textDark,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(
+          color: _textMuted,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
         ),
-      ],
+        prefixIcon: Icon(icon, size: 20, color: _brandDark.withOpacity(0.6)),
+        filled: true,
+        fillColor: _brandLight.withOpacity(0.5),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _goldAccent.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _brandDark, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      ),
+      items: items.map((item) {
+        return DropdownMenuItem<String>(
+          value: item,
+          child: Text(item),
+        );
+      }).toList(),
+      onChanged: onChanged,
     );
   }
+
+  // ─── Jamiyat Dropdown ─────────────────────────────────────────
 
   Widget _buildJamiyatDropdown() {
-    // For captains, only show their own jamiyat
     final displayJamiyats = _isCaptain && _captainJamiyat != null
         ? _jamiyats.where((j) => j.name == _captainJamiyat).toList()
         : _jamiyats;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DropdownButtonFormField<String>(
-          value: _selectedJamiyat,
-          decoration: InputDecoration(
-            label: Text(_isCaptain ? 'Jamiyat (Locked)' : 'Jamiyat'),
-            filled: true,
-            fillColor: _isCaptain ? Colors.grey[100] : Colors.white,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-          ),
-          items: displayJamiyats.map((JamiyatItem item) {
-            return DropdownMenuItem<String>(
-              value: item.name,
-              child: Text(item.displayName),
-            );
-          }).toList(),
-          onChanged: _isCaptain
-              ? null // Disable for captains
-              : (value) {
-                  setState(() {
-                    _selectedJamiyat = value;
-                    // Clear jamaat when jamiyat changes
-                    _selectedJamaat = null;
-                  });
-                },
+    return DropdownButtonFormField<String>(
+      value: _selectedJamiyat,
+      style: const TextStyle(
+        color: _textDark,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+      ),
+      decoration: InputDecoration(
+        labelText: _isCaptain ? 'Jamiyat (Locked)' : 'Jamiyat',
+        labelStyle: const TextStyle(
+          color: _textMuted,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
         ),
-      ],
+        prefixIcon: Icon(Icons.account_balance_outlined,
+            size: 20, color: _brandDark.withOpacity(0.6)),
+        suffixIcon: _isCaptain
+            ? Icon(Icons.lock, size: 16, color: _goldAccent)
+            : null,
+        filled: true,
+        fillColor: _isCaptain ? Colors.grey[100] : _brandLight.withOpacity(0.5),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _goldAccent.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _brandDark, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      ),
+      items: displayJamiyats.map((item) {
+        return DropdownMenuItem<String>(
+          value: item.name,
+          child: Text(item.displayName),
+        );
+      }).toList(),
+      onChanged: _isCaptain
+          ? null
+          : (value) {
+              setState(() {
+                _selectedJamiyat = value;
+                _selectedJamaat = null;
+              });
+            },
     );
   }
 
+  // ─── Jamaat Dropdown ──────────────────────────────────────────
+
   Widget _buildJamaatDropdown() {
-    // For captains, only show their own jamaat
     final displayJamaats = _isCaptain && _captainJamaat != null
         ? _jamaats.where((j) => j.name == _captainJamaat).toList()
         : _jamaats;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DropdownButtonFormField<String>(
-          value: _selectedJamaat,
-          decoration: InputDecoration(
-            label: Text(_isCaptain ? 'Jamaat (Locked)' : 'Jamaat'),
-            filled: true,
-            fillColor: _isCaptain ? Colors.grey[100] : Colors.white,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF4A1C1C), width: 1),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-          ),
-          items: displayJamaats.map((JamaatItem item) {
-            return DropdownMenuItem<String>(
-              value: item.name,
-              child: Text(item.displayName),
-            );
-          }).toList(),
-          onChanged: _isCaptain
-              ? null // Disable for captains
-              : (value) {
-                  setState(() {
-                    _selectedJamaat = value;
-                  });
-                },
+    return DropdownButtonFormField<String>(
+      value: _selectedJamaat,
+      style: const TextStyle(
+        color: _textDark,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+      ),
+      decoration: InputDecoration(
+        labelText: _isCaptain ? 'Jamaat (Locked)' : 'Jamaat',
+        labelStyle: const TextStyle(
+          color: _textMuted,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
         ),
-      ],
+        prefixIcon: Icon(Icons.groups_outlined,
+            size: 20, color: _brandDark.withOpacity(0.6)),
+        suffixIcon: _isCaptain
+            ? Icon(Icons.lock, size: 16, color: _goldAccent)
+            : null,
+        filled: true,
+        fillColor: _isCaptain ? Colors.grey[100] : _brandLight.withOpacity(0.5),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _goldAccent.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _brandDark, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      ),
+      items: displayJamaats.map((item) {
+        return DropdownMenuItem<String>(
+          value: item.name,
+          child: Text(item.displayName),
+        );
+      }).toList(),
+      onChanged: _isCaptain
+          ? null
+          : (value) {
+              setState(() => _selectedJamaat = value);
+            },
     );
-  }
-
-  @override
-  void dispose() {
-    _itsIdController.dispose();
-    _fullNameController.dispose();
-    _emailController.dispose();
-    _contactController.dispose();
-    _ageController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 }

@@ -80,6 +80,7 @@ class UserAuthResponse {
   final String? gender;
   final int? age;
   final String? contact;
+  final String? dateOfBirth;
   final String role;
   final String token;
   final bool requiresPasswordChange;
@@ -98,6 +99,7 @@ class UserAuthResponse {
     this.gender,
     this.age,
     this.contact,
+    this.dateOfBirth,
     required this.role,
     required this.token,
     this.requiresPasswordChange = false,
@@ -119,6 +121,7 @@ class UserAuthResponse {
       gender: json['gender'] as String? ?? json['Gender'] as String?,
       age: json['age'] as int? ?? json['Age'] as int?,
       contact: json['contact'] as String? ?? json['Contact'] as String?,
+      dateOfBirth: json['dateOfBirth'] as String? ?? json['DateOfBirth'] as String?,
       role: json['role'] as String? ?? json['Role'] as String? ?? '',
       token: json['token'] as String? ?? json['Token'] as String? ?? '',
       requiresPasswordChange: json['requiresPasswordChange'] as bool? ??
@@ -144,6 +147,7 @@ class UserAuthResponse {
       gender: gender,
       age: age,
       contact: contact,
+      dateOfBirth: dateOfBirth,
       role: role,
     );
   }
@@ -163,6 +167,7 @@ class UserData {
   final String? gender;
   final int? age;
   final String? contact;
+  final String? dateOfBirth;
   final String role;
 
   UserData({
@@ -178,6 +183,7 @@ class UserData {
     this.gender,
     this.age,
     this.contact,
+    this.dateOfBirth,
     required this.role,
   });
 
@@ -195,6 +201,7 @@ class UserData {
       'gender': gender,
       'age': age,
       'contact': contact,
+      'dateOfBirth': dateOfBirth,
       'role': role,
     };
   }
@@ -213,6 +220,7 @@ class UserData {
       gender: json['gender'] as String?,
       age: json['age'] as int?,
       contact: json['contact'] as String?,
+      dateOfBirth: json['dateOfBirth'] as String?,
       role: json['role'] as String? ?? '',
     );
   }

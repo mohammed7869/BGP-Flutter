@@ -23,6 +23,7 @@ class UserService {
     String? gender,
     int? age,
     String? password,
+    String? dateOfBirth,
   }) async {
     try {
       final token = await _localStorage.getToken();
@@ -43,6 +44,7 @@ class UserService {
         if (gender != null && gender.isNotEmpty) 'gender': gender,
         if (age != null) 'age': age,
         if (password != null && password.isNotEmpty) 'password': password,
+        if (dateOfBirth != null && dateOfBirth.isNotEmpty) 'dateOfBirth': dateOfBirth,
       };
 
       final response = await http
