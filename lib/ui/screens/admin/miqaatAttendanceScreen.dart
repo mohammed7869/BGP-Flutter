@@ -5,6 +5,7 @@ import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -213,9 +214,16 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                 Image.asset('assets/images/burhani guards logo.png',
                     height: 52),
                 IconButton(
-                  icon: const Icon(Icons.notifications_outlined,
+                  icon: const Icon(Icons.calendar_month_outlined,
                       color: Colors.white, size: 28),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BohraCalendarScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

@@ -2,6 +2,7 @@ import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 
 class CreateMiqaatScreen extends StatefulWidget {
   const CreateMiqaatScreen({Key? key}) : super(key: key);
@@ -165,6 +166,9 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
               const SizedBox(height: 16),
               _buildTextField('Volunteer Limit', _volunteerLimitController,
                   keyboardType: TextInputType.number),
+              const SizedBox(height: 16),
+              // Bohra Miqaat Calendar Reference
+              _buildBohrCalendarCard(),
               const SizedBox(height: 16),
               _buildMultilineTextField('About Miqaat', _aboutController),
               const SizedBox(height: 30),
@@ -739,6 +743,118 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildBohrCalendarCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF8B6914), Color(0xFFB8860B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF8B6914).withOpacity(0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () async {
+            final result = await Navigator.push<BohraCalendarSelection>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BohraCalendarScreen(pickerMode: true),
+              ),
+            );
+
+            if (result != null && mounted) {
+              setState(() {
+                // Auto-fill miqaat name if provided
+                if (result.miqaatName != null && result.miqaatName!.isNotEmpty) {
+                  _miqaatNameController.text = result.miqaatName!;
+                }
+                // Auto-fill from date if provided
+                if (result.fromDate != null) {
+                  _fromDate = result.fromDate;
+                  _fromDateController.text =
+                      '${result.fromDate!.day}${_getDaySuffix(result.fromDate!.day)} ${_getMonthName(result.fromDate!.month)} ${result.fromDate!.year}';
+                }
+                // Auto-fill till date if provided
+                if (result.tillDate != null) {
+                  _tillDate = result.tillDate;
+                  _tillDateController.text =
+                      '${result.tillDate!.day}${_getDaySuffix(result.tillDate!.day)} ${_getMonthName(result.tillDate!.month)} ${result.tillDate!.year}';
+                }
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Calendar details applied! You can edit them if needed.'),
+                  backgroundColor: Color(0xFF8B6914),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pick from Bohra Calendar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Browse & select miqaat name and dates',
+                        style: TextStyle(
+                          color: Color(0xFFFFE0A0),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.white70,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

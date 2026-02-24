@@ -603,6 +603,7 @@ class MiqaatService {
     required int miqaatId,
     required int memberId,
     required String finalStatus,
+    List<int>? days,
   }) async {
     try {
       final token = await _localStorage.getToken();
@@ -614,6 +615,7 @@ class MiqaatService {
 
       final requestBody = {
         'status': finalStatus,
+        if (days != null && days.isNotEmpty) 'days': days,
       };
 
       final response = await http

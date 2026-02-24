@@ -445,30 +445,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     future: _localStorage.getUserData(),
                     builder: (context, snapshot) {
                       final isCaptain = snapshot.data?.roles == 2;
-                      final memberStatus =
-                          miqaat.memberStatus?.toLowerCase() ?? '';
-                      final finalStatus =
-                          miqaat.finalStatus?.toLowerCase() ?? '';
 
                       String buttonText = isCaptain
                           ? 'View Members List'
-                          : 'Approve / Reject miqaat';
+                          : 'View Day-wise Status';
                       bool enableTap = true;
 
-                      if (!isCaptain) {
-                        if (finalStatus == 'approved') {
-                          buttonText = 'Approved by Captain';
-                          enableTap = false;
-                        } else if (finalStatus == 'rejected') {
-                          buttonText = 'Rejected by Captain';
-                          enableTap = false;
-                        } else if (memberStatus == 'approved') {
-                          buttonText = 'Enrolled - Awaiting Captain Approval';
-                          enableTap = false;
-                        } else if (memberStatus == 'rejected') {
-                          buttonText = 'Rejected by You';
-                          enableTap = false;
-                        }
+                      if (_isMiqaatCompleted(miqaat.tillDate) && !isCaptain) {
+                        buttonText = 'Miqaat Completed';
+                        enableTap = false;
                       }
 
                       return InkWell(
@@ -488,7 +473,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     ),
                                   );
                                 } else {
-                                  _showMiqaatActionDialog(miqaat);
+                                  _showDayWiseEnrollmentDialog(miqaat);
                                 }
                               },
                         child: Text(
@@ -568,203 +553,335 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _showMiqaatActionDialog(Miqaat miqaat) async {
-    final userData = await _localStorage.getUserData();
-    final isCaptain = userData?.roles == 2;
-    final totalDays = miqaat.miqaatDays;
-    final Set<int> selectedDays = {1};
+    // Redirect to new day-wise dialog
+    _showDayWiseEnrollmentDialog(miqaat);
+  }
 
-    return showDialog(
+
+  /// Check if a day has already passed (before today - current day is allowed)
+  bool _isDayPassed(DateTime dayDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(dayDate.year, dayDate.month, dayDate.day);
+    return day.isBefore(today);
+  }
+
+  Future<void> _showDayWiseEnrollmentDialog(Miqaat miqaat) async {
+    final userData = await _localStorage.getUserData();
+    if (userData == null || userData.id == 0) return;
+
+    // Show loading
+    showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF4A1C1C)),
+      ),
+    );
+
+    try {
+      final enrollmentDays = await _miqaatService.getMemberEnrollmentDays(
+        miqaatId: miqaat.id,
+        memberId: userData.id,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading
+
+      _showDayWiseDialog(miqaat, enrollmentDays, userData.id);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load enrollment days: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showDayWiseDialog(Miqaat miqaat, List<MemberEnrollmentDay> enrollmentDays, int memberId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(miqaat.miqaatName),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Location: ${miqaat.isInternational ? 'International Miqaat' : '${miqaat.jamaat}, ${miqaat.jamiyat}'}',
-                      style: const TextStyle(fontSize: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    miqaat.miqaatName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF4A1C1C),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Date: ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)} (${miqaat.durationLabel})',
-                      style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF666666),
+                      fontWeight: FontWeight.normal,
                     ),
-                    if (miqaat.aboutMiqaat != null &&
-                        miqaat.aboutMiqaat!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'About: ${miqaat.aboutMiqaat}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ],
-                    if (!isCaptain) ...[
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Would you like to Enroll/Reject for this miqaat?',
-                        style:
-                            TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                      ),
-                      if (totalDays > 1) ...[
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Select day(s) for enrollment',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxHeight: MediaQuery.of(context).size.height * 0.3,
-                          ),
-                          child: SingleChildScrollView(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: List.generate(totalDays, (index) {
-                                final dayNumber = index + 1;
-                                final dayDate = miqaat.fromDate
-                                    .add(Duration(days: index));
-                                final label =
-                                    'Day $dayNumber (${_formatDate(dayDate)})';
-                                return FilterChip(
-                                  label: Text(
-                                    label,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: selectedDays.contains(dayNumber)
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                  selected: selectedDays.contains(dayNumber),
-                                  selectedColor: const Color(0xFF4A1C1C),
-                                  onSelected: (selected) {
-                                    setDialogState(() {
-                                      if (selected) {
-                                        selectedDays.add(dayNumber);
-                                      } else {
-                                        if (selectedDays.length > 1) {
-                                          selectedDays.remove(dayNumber);
-                                        }
-                                      }
-                                    });
-                                  },
-                                );
-                              }),
-                            ),
+                  ),
+                  const Divider(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 14, color: Color(0xFFE65100)),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Enroll/Reject for each day. Past dates or Captain finalized days are locked.',
+                            style: TextStyle(fontSize: 10, color: Color(0xFFE65100)),
                           ),
                         ),
                       ],
-                    ],
-                  ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                  ),
+                  child: enrollmentDays.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No enrollment data found',
+                            style: TextStyle(color: Color(0xFF666666)),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: enrollmentDays.length,
+                          itemBuilder: (context, index) {
+                            final day = enrollmentDays[index];
+                            final dayDate = miqaat.fromDate.add(Duration(days: day.day - 1));
+                            final isPassed = _isDayPassed(dayDate);
+                            final isCaptainFinalized = day.finalStatus != null &&
+                                day.finalStatus!.isNotEmpty &&
+                                (day.finalStatus == 'Approved' || day.finalStatus == 'Rejected');
+                            final isLocked = isPassed || isCaptainFinalized;
+
+                            final isEnrolled = day.status == 'Approved';
+                            final isRejected = day.status == 'Rejected';
+
+                            Color cardColor;
+                            if (isCaptainFinalized) {
+                              cardColor = day.finalStatus == 'Approved'
+                                  ? Colors.green.withOpacity(0.08)
+                                  : Colors.red.withOpacity(0.08);
+                            } else if (isEnrolled) {
+                              cardColor = Colors.green.withOpacity(0.06);
+                            } else if (isRejected) {
+                              cardColor = Colors.red.withOpacity(0.06);
+                            } else {
+                              cardColor = Colors.orange.withOpacity(0.06);
+                            }
+
+                            Color borderColor;
+                            if (isCaptainFinalized) {
+                              borderColor = day.finalStatus == 'Approved'
+                                  ? Colors.green.withOpacity(0.3)
+                                  : Colors.red.withOpacity(0.3);
+                            } else if (isEnrolled) {
+                              borderColor = Colors.green.withOpacity(0.2);
+                            } else if (isRejected) {
+                              borderColor = Colors.red.withOpacity(0.2);
+                            } else {
+                              borderColor = Colors.orange.withOpacity(0.2);
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: borderColor),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Day header row
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF4A1C1C),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'Day ${day.day}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        day.miqaatDate,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      if (isPassed)
+                                        _buildDayBadge('Passed', Colors.grey[600]!),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Status row
+                                  Row(
+                                    children: [
+                                      _buildStatusPill(
+                                        'You: ${isEnrolled ? 'Enrolled' : isRejected ? 'Rejected' : 'Pending'}',
+                                        isEnrolled ? Colors.green : isRejected ? Colors.red : Colors.orange,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (isCaptainFinalized)
+                                        _buildStatusPill(
+                                          'Captain: ${day.finalStatus}',
+                                          day.finalStatus == 'Approved' ? Colors.green : Colors.red,
+                                        )
+                                      else if (isEnrolled)
+                                        _buildStatusPill(
+                                          'Captain: Pending',
+                                          Colors.grey,
+                                        ),
+                                    ],
+                                  ),
+                                  // Action buttons (only if not locked)
+                                  if (!isLocked) ...[
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        if (!isEnrolled)
+                                          Expanded(
+                                            child: ElevatedButton.icon(
+                                              onPressed: () async {
+                                                await _updateDayStatus(
+                                                  miqaat, memberId, day.day, 'Approved',
+                                                  dialogContext, setDialogState, enrollmentDays, index,
+                                                );
+                                              },
+                                              icon: const Icon(Icons.check_circle_outline, size: 16),
+                                              label: const Text('Enroll', style: TextStyle(fontSize: 12)),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.green,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                              ),
+                                            ),
+                                          ),
+                                        if (!isEnrolled && !isRejected) const SizedBox(width: 8),
+                                        if (!isRejected)
+                                          Expanded(
+                                            child: ElevatedButton.icon(
+                                              onPressed: () async {
+                                                await _updateDayStatus(
+                                                  miqaat, memberId, day.day, 'Rejected',
+                                                  dialogContext, setDialogState, enrollmentDays, index,
+                                                );
+                                              },
+                                              icon: const Icon(Icons.cancel_outlined, size: 16),
+                                              label: const Text('Reject', style: TextStyle(fontSize: 12)),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.red,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                  // Locked message
+                                  if (isPassed && !isCaptainFinalized) ...[
+                                    const SizedBox(height: 6),
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.lock_outline, size: 12, color: Colors.grey),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'This day has passed',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (isCaptainFinalized) ...[
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          day.finalStatus == 'Approved'
+                                              ? Icons.verified
+                                              : Icons.block,
+                                          size: 12,
+                                          color: day.finalStatus == 'Approved'
+                                              ? Colors.green
+                                              : Colors.red,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Captain has ${day.finalStatus?.toLowerCase()} this day',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: day.finalStatus == 'Approved'
+                                                ? Colors.green[700]
+                                                : Colors.red[700],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Color(0xFF4A1C1C)),
+                  ),
                 ),
-                if (!isCaptain) ...[
-                  TextButton(
-                    onPressed: () async {
-                      // Show confirmation dialog before rejecting
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (BuildContext confirmContext) {
-                          return AlertDialog(
-                            title: const Text('Confirm Rejection'),
-                            content: Text(
-                              'Once you reject this, the miqaat for ${totalDays > 1 ? 'all $totalDays days' : '1 day'} cannot be undone and will result in attendance not being marked for this miqaat.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(confirmContext).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.of(confirmContext).pop(true),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text('Confirm Reject'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-
-                      if (confirmed == true) {
-                        Navigator.of(context).pop();
-                        // Reject all days of the miqaat, not just selected days
-                        // Pass null to update all days
-                        await _updateMiqaatStatus(
-                          miqaat,
-                          'Rejected',
-                          days: null,
-                        );
-                      }
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
-                    ),
-                    child: const Text('Reject'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      // Show confirmation dialog before approving
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (BuildContext confirmContext) {
-                          return AlertDialog(
-                            title: const Text('Confirm Enrollment'),
-                            content: const Text(
-                              'Enrollment can only be done once and cannot be undone. Are you sure you want to proceed?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(confirmContext).pop(false),
-                                child: const Text('Cancel'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.of(confirmContext).pop(true),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text('Confirm'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-
-                      if (confirmed == true) {
-                        Navigator.of(context).pop();
-                        final days = totalDays > 1
-                            ? (selectedDays.toList()..sort())
-                            : null;
-                        await _updateMiqaatStatus(
-                          miqaat,
-                          'Approved',
-                          days: days,
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Enroll'),
-                  ),
-                ],
               ],
             );
           },
@@ -773,40 +890,91 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Future<void> _updateMiqaatStatus(
-    Miqaat miqaat,
-    String status, {
-    List<int>? days,
-  }) async {
-    try {
-      final userData = await _localStorage.getUserData();
-      if (userData == null || userData.id == 0) {
-        throw Exception('User not found');
-      }
+  Widget _buildDayBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 9,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
 
+  Widget _buildStatusPill(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateDayStatus(
+    Miqaat miqaat,
+    int memberId,
+    int dayNumber,
+    String status,
+    BuildContext dialogContext,
+    void Function(void Function()) setDialogState,
+    List<MemberEnrollmentDay> enrollmentDays,
+    int index,
+  ) async {
+    try {
       await _miqaatService.updateMemberMiqaatStatus(
-        memberId: userData.id,
+        memberId: memberId,
         miqaatId: miqaat.id,
         status: status,
-        days: days,
+        days: [dayNumber],
       );
+
+      // Update local state for immediate UI feedback
+      setDialogState(() {
+        enrollmentDays[index] = MemberEnrollmentDay(
+          day: dayNumber,
+          status: status,
+          finalStatus: enrollmentDays[index].finalStatus,
+          miqaatDate: enrollmentDays[index].miqaatDate,
+        );
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Miqaat $status successfully'),
-            backgroundColor: Colors.green,
+            content: Text(
+              status == 'Approved'
+                  ? 'Day $dayNumber enrolled successfully'
+                  : 'Day $dayNumber rejected',
+            ),
+            backgroundColor: status == 'Approved' ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
 
-      // Reload miqaats to reflect the change
-      await _loadMemberMiqaats();
+      // Reload miqaats in background
+      _loadMemberMiqaats();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update status: ${e.toString()}'),
+            content: Text('Failed: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -814,3 +982,4 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 }
+

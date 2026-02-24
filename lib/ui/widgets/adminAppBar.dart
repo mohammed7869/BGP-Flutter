@@ -1,3 +1,4 @@
+import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 import 'package:flutter/material.dart';
 
 Widget buildAppBar(BuildContext context, GlobalKey<ScaffoldState> scaffoldKey) {
@@ -32,7 +33,16 @@ Widget buildAppBar(BuildContext context, GlobalKey<ScaffoldState> scaffoldKey) {
           },
         ),
         Image.asset('assets/images/burhani guards logo.png', height: 52),
-        const SizedBox(width: 48), // Placeholder for layout balance
+        IconButton(
+          icon: const Icon(Icons.calendar_month_outlined, color: Colors.white, size: 28),
+          onPressed: () {
+            // Check if BohraCalendarScreen is imported or use Navigator to push directly if possible via string route or import
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const BohraCalendarScreen()),
+            );
+          },
+        ),
       ],
     ),
   );

@@ -1,3 +1,4 @@
+import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 import 'package:flutter/material.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
@@ -101,9 +102,16 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.notifications_outlined,
+                          icon: const Icon(Icons.calendar_month_outlined,
                               color: Colors.white),
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const BohraCalendarScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
