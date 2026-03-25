@@ -4,6 +4,7 @@ import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 // import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 // import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
+import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 // import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
@@ -87,7 +88,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF461D17)),
+                                AppColors.primary),
                           ),
                         )
                       : Text(
@@ -124,32 +125,19 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                         );
                       },
                     ),
-                    // _buildMenuItem(
-                    //   context,
-                    //   icon: Icons.calendar_today,
-                    //   title: 'Miqaats',
-                    //   onTap: () {
-                    //     Navigator.pop(context);
-                    //     Navigator.pushReplacement(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //           builder: (_) => const MiqaatScreen()),
-                    //     );
-                    //   },
-                    // ),
-                    // _buildMenuItem(
-                    //   context,
-                    //   icon: Icons.bar_chart,
-                    //   title: 'Attendance',
-                    //   onTap: () {
-                    //     Navigator.pop(context);
-                    //     Navigator.pushReplacement(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //           builder: (_) => const AttendanceMiqaatScreen()),
-                    //     );
-                    //   },
-                    // ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.account_tree_rounded,
+                      title: 'Hierarchy',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const HierarchyScreen()),
+                        );
+                      },
+                    ),
                     _buildMenuItem(
                       context,
                       icon: Icons.person,
@@ -229,51 +217,55 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
             ),
 
             // Bottom Buttons (Reset Password & Logout)
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                children: [
-                  // Reset Password Button
-                  ListTile(
-                    leading: Icon(
-                      Icons.lock_reset,
-                      color: AppColors.primary,
-                      size: 22,
-                    ),
-                    title: Text(
-                      'Reset Password',
-                      style: TextStyle(
+            SafeArea(
+              top: false,
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  children: [
+                    // Reset Password Button
+                    ListTile(
+                      leading: Icon(
+                        Icons.lock_reset,
                         color: AppColors.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                        size: 22,
                       ),
+                      title: Text(
+                        'Reset Password',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      onTap: () {
+                        _handleResetPassword(context);
+                      },
                     ),
-                    onTap: () {
-                      _handleResetPassword(context);
-                    },
-                  ),
-                  const Divider(height: 1),
-                  // Logout Button
-                  ListTile(
-                    leading: const Icon(
-                      Icons.exit_to_app,
-                      color: Colors.red,
-                      size: 22,
-                    ),
-                    title: const Text(
-                      'Log Out',
-                      style: TextStyle(
+                    const Divider(height: 1),
+                    // Logout Button
+                    ListTile(
+                      leading: const Icon(
+                        Icons.exit_to_app,
                         color: Colors.red,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                        size: 22,
                       ),
+                      title: const Text(
+                        'Log Out',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      onTap: () {
+                        _handleLogout(context);
+                      },
                     ),
-                    onTap: () {
-                      _handleLogout(context);
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
           ],
@@ -292,20 +284,19 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFFFE5D9) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        color: isSelected ? AppColors.primary.withOpacity(0.08) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
         leading: Icon(
           icon,
-          color: const Color(0xFF461D17),
+          color: AppColors.primaryDark,
           size: 22,
         ),
         title: Text(
           title,
           style: TextStyle(
-            color:
-                isSelected ? const Color(0xFF461D17) : const Color(0xFF461D17),
+            color: AppColors.primaryDark,
             fontSize: 16,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),

@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:burhaniguardsapp/core/constants/api_constants.dart';
+import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
+import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
@@ -184,219 +187,301 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
     );
   }
 
+  Future<void> _handleLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Log Out',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (shouldLogout == true && mounted) {
+      await _localStorage.clearAll();
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(
+              builder: (context) => const UnifiedLoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Custom AppBar with curved bottom
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            decoration: BoxDecoration(
-              color: widget.miqaat.isInternational
-                  ? const Color(0xFFB8860B) // Dark golden for international
-                  : const Color(0xFF4A1C1C),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+          // Premium AppBar with Calendar + Logout
+          SafeArea(
+            bottom: false,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              decoration: BoxDecoration(
+                gradient: widget.miqaat.isInternational
+                    ? const LinearGradient(
+                        colors: [Color(0xFF8B6914), Color(0xFFB8860B)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
+                    : AppColors.heroGradient,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (widget.miqaat.isInternational
+                            ? const Color(0xFFB8860B)
+                            : AppColors.primaryDark)
+                        .withOpacity(0.30),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back,
-                      color: Colors.white, size: 28),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                Image.asset('assets/images/burhani guards logo.png',
-                    height: 52),
-                IconButton(
-                  icon: const Icon(Icons.calendar_month_outlined,
-                      color: Colors.white, size: 28),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const BohraCalendarScreen(),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: Colors.white, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Image.asset('assets/images/burhani guards logo.png',
+                          height: 52),
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.calendar_month_outlined,
+                            color: Colors.white, size: 26),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const BohraCalendarScreen(),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-              ],
+                      IconButton(
+                        icon: const Icon(Icons.logout_rounded,
+                            color: Colors.white, size: 26),
+                        onPressed: () => _handleLogout(context),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
           // Content
           Expanded(
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                widget.miqaat.miqaatName,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.miqaat.miqaatName,
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
                               ),
                             ),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: _hasExistingReport()
-                                    ? Colors.green.withOpacity(0.1)
-                                    : const Color(0xFF4A1C1C).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  _hasExistingReport()
-                                      ? Icons.info_outline
-                                      : Icons.note_add_outlined,
-                                  color: _hasExistingReport()
-                                      ? Colors.green
-                                      : const Color(0xFF4A1C1C),
-                                  size: 22,
-                                ),
-                                onPressed: _hasExistingReport()
-                                    ? _showViewReportDialog
-                                    : _showReportDialog,
-                                tooltip: _hasExistingReport()
-                                    ? 'View Report'
-                                    : 'Submit Report',
-                                padding: const EdgeInsets.all(8),
-                                constraints: const BoxConstraints(),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Attendance - Approved Members',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
                           ),
-                        ),
-                        if (widget.miqaat.miqaatDays > 1) ...[
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Text(
-                                'Day:',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: _hasExistingReport()
+                                  ? Colors.green.withOpacity(0.1)
+                                  : AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                _hasExistingReport()
+                                    ? Icons.info_outline
+                                    : Icons.note_add_outlined,
+                                color: _hasExistingReport()
+                                    ? Colors.green
+                                    : AppColors.primary,
+                                size: 22,
                               ),
-                              const SizedBox(width: 12),
-                              DropdownButton<int>(
-                                value: _selectedDay,
-                                items: List.generate(
-                                  widget.miqaat.miqaatDays,
-                                  (i) => DropdownMenuItem(
-                                    value: i + 1,
-                                    child: Text(
-                                      'Day ${i + 1} - ${_formatShortDate(widget.miqaat.fromDate.add(Duration(days: i)))}',
-                                    ),
-                                  ),
-                                ),
-                                onChanged: (value) async {
-                                  if (value == null) return;
-                                  setState(() {
-                                    _selectedDay = value;
-                                    _selectedMemberIds.clear();
-                                  });
-                                  await _loadMembers();
-                                },
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                _formatShortDate(_getSelectedDayDate()),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                              onPressed: _hasExistingReport()
+                                  ? _showViewReportDialog
+                                  : _showReportDialog,
+                              tooltip: _hasExistingReport()
+                                  ? 'View Report'
+                                  : 'Submit Report',
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                            ),
                           ),
                         ],
-                      ],
-                    ),
-                  ),
-
-                  if (_isLoading)
-                    const Expanded(
-                      child: Center(
-                        child: CircularProgressIndicator(),
                       ),
-                    )
-                  else if (_errorMessage != null)
-                    Expanded(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Attendance - Approved Members',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      if (widget.miqaat.miqaatDays > 1) ...[
+                        const SizedBox(height: 12),
+                        Row(
                           children: [
                             Text(
-                              _errorMessage!,
-                              style: const TextStyle(
-                                color: Colors.red,
+                              'Day:',
+                              style: GoogleFonts.poppins(
                                 fontSize: 14,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _loadMembers,
-                              child: const Text('Retry'),
+                            const SizedBox(width: 12),
+                            DropdownButton<int>(
+                              value: _selectedDay,
+                              items: List.generate(
+                                widget.miqaat.miqaatDays,
+                                (i) => DropdownMenuItem(
+                                  value: i + 1,
+                                  child: Text(
+                                    'Day ${i + 1} - ${_formatShortDate(widget.miqaat.fromDate.add(Duration(days: i)))}',
+                                    style: GoogleFonts.poppins(fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                              onChanged: (value) async {
+                                if (value == null) return;
+                                setState(() {
+                                  _selectedDay = value;
+                                  _selectedMemberIds.clear();
+                                });
+                                await _loadMembers();
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              _formatShortDate(_getSelectedDayDate()),
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    )
-                  else if (_members.isEmpty)
-                    const Expanded(
-                      child: Center(
-                        child: Text(
-                          'No approved members found',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _loadMembers,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: _members.length,
-                          itemBuilder: (context, index) {
-                            final member = _members[index];
-                            final isSelected = _selectedMemberIds.contains(member.id);
-                            return _buildMemberCard(member, isSelected);
-                          },
-                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                if (_isLoading)
+                  Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                        strokeWidth: 3,
                       ),
                     ),
-                ],
-              ),
+                  )
+                else if (_errorMessage != null)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _errorMessage!,
+                            style: GoogleFonts.poppins(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadMembers,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (_members.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.people_outline_rounded,
+                            size: 56,
+                            color: AppColors.primary.withOpacity(0.2),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No approved members found',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _loadMembers,
+                      color: AppColors.primary,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _members.length,
+                        itemBuilder: (context, index) {
+                          final member = _members[index];
+                          final isSelected = _selectedMemberIds.contains(member.id);
+                          return _buildMemberCard(member, isSelected);
+                        },
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -408,9 +493,9 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, -3),
                   ),
                 ],
               ),
@@ -422,11 +507,12 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: widget.miqaat.isInternational
                           ? const Color(0xFFB8860B)
-                          : const Color(0xFF4A1C1C),
+                          : AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(14),
                       ),
+                      elevation: 4,
                     ),
                     child: _isMarkingAttendance
                         ? const SizedBox(
@@ -438,9 +524,9 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                                   AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text(
+                        : Text(
                             'Mark Attended',
-                            style: TextStyle(
+                            style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -457,110 +543,152 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   Widget _buildMemberCard(EnrolledMember member, bool isSelected) {
     final isAttended = member.isAttended == true;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: isAttended
+            ? const Color(0xFFF0FAF0)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isSelected ? const Color(0xFF4A1C1C) : Colors.grey[300]!,
+          color: isSelected
+              ? AppColors.primary
+              : isAttended
+                  ? Colors.green.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.12),
           width: isSelected ? 2 : 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: isAttended ? null : () => _toggleMemberSelection(member.id),
-            child: isAttended
-                ? const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 26,
-                  )
-                : Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF4A1C1C)
-                            : Colors.grey[700]!,
-                        width: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: isAttended ? null : () => _toggleMemberSelection(member.id),
+              child: isAttended
+                  ? Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      color: Colors.white,
-                    ),
-                    child: isSelected
-                        ? Center(
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color(0xFF4A1C1C),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    )
+                  : Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.grey[400]!,
+                          width: 2,
+                        ),
+                        color: Colors.white,
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.primary,
+                                ),
                               ),
-                            ),
-                          )
-                        : null,
-                  ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MemberMiqaatHistoryScreen(
-                      memberId: member.id,
-                      fullName: member.fullName,
-                      itsId: member.itsId,
-                      miqaatId: widget.miqaat.id,
+                            )
+                          : null,
                     ),
-                  ),
-                );
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    member.fullName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (member.itsId != null && member.itsId!.isNotEmpty)
-                    Text(
-                      'ITS ID: ${member.itsId}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MemberMiqaatHistoryScreen(
+                        memberId: member.id,
+                        fullName: member.fullName,
+                        itsId: member.itsId,
+                        miqaatId: widget.miqaat.id,
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-          if (isAttended)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'Attended',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
+                  );
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      member.fullName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (member.itsId != null && member.itsId!.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'ITS ID: ${member.itsId}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
-        ],
+            if (isAttended)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Attended',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

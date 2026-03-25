@@ -2,13 +2,17 @@
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
+import 'package:burhaniguardsapp/core/services/user_service.dart';
+import 'package:burhaniguardsapp/core/utils/session_manager.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/createMiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/membersListScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/pointsScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/common/underDevelopmentScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBar.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppDrawer.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
+import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -19,17 +23,105 @@ class AdminDashboardScreen extends StatefulWidget {
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+class _AdminDashboardScreenState extends State<AdminDashboardScreen>
+    with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   final MiqaatService _miqaatService = MiqaatService();
   final LocalStorageService _localStorage = LocalStorageService();
+  final UserService _userService = UserService();
   List<Miqaat> _memberMiqaats = [];
   bool _isLoadingMiqaats = false;
+  int _selectedMiqaatTab = 0; // 0=Ongoing, 1=Upcoming, 2=Completed
+
+  // ── Role & counts for Quick Actions ──
+  bool _isCaptain = false;
+  int _memberCount = 0;
+  int _miqaatCount = 0;
+  int _totalPoints = 0;
+
+  // ── Animations ──
+  late AnimationController _shortcutController;
+  late AnimationController _miqaatController;
+  late Animation<double> _shortcutFade;
+  late Animation<Offset> _shortcutSlide;
+  late Animation<double> _miqaatFade;
+  late Animation<Offset> _miqaatSlide;
 
   @override
   void initState() {
     super.initState();
+
+    _shortcutController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    _shortcutFade = CurvedAnimation(
+      parent: _shortcutController,
+      curve: Curves.easeOut,
+    );
+    _shortcutSlide = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _shortcutController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _miqaatController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    _miqaatFade = CurvedAnimation(
+      parent: _miqaatController,
+      curve: Curves.easeOut,
+    );
+    _miqaatSlide = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _miqaatController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Stagger entrance
+    _shortcutController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _miqaatController.forward();
+    });
+
     _loadMemberMiqaats();
+    _loadUserRoleAndCounts();
+  }
+
+  Future<void> _loadUserRoleAndCounts() async {
+    try {
+      final userData = await _localStorage.getUserData();
+      if (userData == null) return;
+      final isCaptain = userData.roles == 2;
+      setState(() => _isCaptain = isCaptain);
+
+      if (isCaptain) {
+        // Load member count for the captain's jamaat
+        if (userData.jamaat != null && userData.jamaat!.isNotEmpty) {
+          try {
+            final members = await _userService.getMembersByJamaat(userData.jamaat!);
+            if (mounted) setState(() => _memberCount = members.length);
+          } catch (_) {}
+        }
+        // Miqaat count = total miqaats loaded for this jamaat
+        if (mounted) setState(() => _miqaatCount = _memberMiqaats.length);
+      } else {
+        // Member: load their total points
+        if (mounted) setState(() => _miqaatCount = _memberMiqaats.length);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _shortcutController.dispose();
+    _miqaatController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadMemberMiqaats() async {
@@ -51,14 +143,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
         if (userData.jamaat != null && userData.jamaat!.isNotEmpty) {
           final jamaatLower = userData.jamaat!.toLowerCase();
-          miqaats = miqaats
-              .where((m) => m.isInternational || (m.jamaat).toLowerCase() == jamaatLower)
-              .toList();
+          miqaats = miqaats.where((m) {
+            if (m.isInternational) {
+              if (m.jamaat.trim().isEmpty) return true;
+              return m.jamaat.toLowerCase().split(',').map((e) => e.trim()).contains(jamaatLower);
+            }
+            return m.jamaat.toLowerCase().split(',').map((e) => e.trim()).contains(jamaatLower);
+          }).toList();
         }
 
         setState(() {
           _memberMiqaats = miqaats;
           _isLoadingMiqaats = false;
+          _miqaatCount = miqaats.length;
         });
       } else {
         setState(() {
@@ -70,6 +167,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _isLoadingMiqaats = false;
       });
       if (mounted) {
+        // Check for session expiry
+        if (SessionManager.isSessionExpired(e)) {
+          SessionManager.handleSessionExpiry(
+            context,
+            onReLoginSuccess: _loadMemberMiqaats,
+          );
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load miqaats: ${e.toString()}'),
@@ -80,10 +185,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  // ── Miqaat categorization ──
+  bool _isMiqaatOngoing(Miqaat miqaat) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final from = DateTime(miqaat.fromDate.year, miqaat.fromDate.month, miqaat.fromDate.day);
+    final till = DateTime(miqaat.tillDate.year, miqaat.tillDate.month, miqaat.tillDate.day);
+    return !today.isBefore(from) && !today.isAfter(till);
+  }
+
+  bool _isMiqaatUpcoming(Miqaat miqaat) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final from = DateTime(miqaat.fromDate.year, miqaat.fromDate.month, miqaat.fromDate.day);
+    return today.isBefore(from);
+  }
+
+  // _isMiqaatCompleted already exists
+
+  List<Miqaat> get _filteredMiqaats {
+    switch (_selectedMiqaatTab) {
+      case 0:
+        return _memberMiqaats.where((m) => _isMiqaatOngoing(m)).toList();
+      case 1:
+        return _memberMiqaats.where((m) => _isMiqaatUpcoming(m)).toList();
+      case 2:
+        return _memberMiqaats.where((m) => _isMiqaatCompleted(m.tillDate)).toList();
+      default:
+        return _memberMiqaats;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppColors.background,
       key: scaffoldKey,
       drawer: const AdminAppDrawer(),
       body: SafeArea(
@@ -92,13 +228,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             buildAppBar(context, scaffoldKey),
             Expanded(
               child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 20),
-                    _buildShortcuts(),
+                    SlideTransition(
+                      position: _shortcutSlide,
+                      child: FadeTransition(
+                        opacity: _shortcutFade,
+                        child: _buildShortcuts(),
+                      ),
+                    ),
                     const SizedBox(height: 24),
-                    _buildMiqaatSection(),
+                    SlideTransition(
+                      position: _miqaatSlide,
+                      child: FadeTransition(
+                        opacity: _miqaatFade,
+                        child: _buildMiqaatSection(),
+                      ),
+                    ),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -112,7 +261,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildShortcuts() {
-    Future<void> onShortCutTap(int route) async {
+    void onShortCutTap(int route) {
       if (route == 1) {
         Navigator.push(
           context,
@@ -129,6 +278,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           context,
           MaterialPageRoute(builder: (context) => const PointsScreen()),
         );
+      } else if (route == 4) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  const UnderDevelopmentScreen(title: 'Qardan Hasana')),
+        );
+      } else if (route == 5) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const HierarchyScreen()),
+        );
       }
     }
 
@@ -137,77 +298,239 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Shortcuts',
-            style: TextStyle(
-              fontSize: 16,
+          Text(
+            'Quick Actions',
+            style: GoogleFonts.poppins(
+              fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF333333),
+              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 3, // number of columns
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 4,
-            childAspectRatio: 0.7,
-            children: [
-              _buildShortcutItem(Icons.supervised_user_circle_sharp, 'Members',
-                  () => onShortCutTap(1)),
-              _buildShortcutItem(Icons.calendar_today_outlined, 'Miqaats',
-                  () => onShortCutTap(2)),
-              _buildShortcutItem(Icons.bar_chart_outlined, 'Points',
-                  () => onShortCutTap(3)),
-            ],
-          ),
+          const SizedBox(height: 14),
+          if (_isCaptain)
+            // Captain: Members + Miqaats + Leaderboard (3 compact cards)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildShortcutCard(
+                    icon: Icons.people_alt_rounded,
+                    label: 'Members',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D7377), Color(0xFF14BDAC)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    glowColor: const Color(0xFF0D7377),
+                    onTap: () => onShortCutTap(1),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildShortcutCard(
+                    icon: Icons.calendar_month_rounded,
+                    label: 'Miqaats',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE67E22), Color(0xFFF5B041)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    glowColor: const Color(0xFFE67E22),
+                    onTap: () => onShortCutTap(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildShortcutCard(
+                    icon: Icons.leaderboard_rounded,
+                    label: 'Leaderboard',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8E44AD), Color(0xFFBB6BD9)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    glowColor: const Color(0xFF8E44AD),
+                    onTap: () => onShortCutTap(3),
+                  ),
+                ),
+              ],
+            )
+          else
+            // Member: Miqaats + My Points + Qardan Hasana (3 compact cards)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildShortcutCard(
+                    icon: Icons.calendar_month_rounded,
+                    label: 'Miqaats',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE67E22), Color(0xFFF5B041)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    glowColor: const Color(0xFFE67E22),
+                    onTap: () => onShortCutTap(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildShortcutCard(
+                    icon: Icons.stars_rounded,
+                    label: 'My Points',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8E44AD), Color(0xFFBB6BD9)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    glowColor: const Color(0xFF8E44AD),
+                    onTap: () => onShortCutTap(3),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildShortcutCard(
+                    icon: Icons.account_tree_rounded,
+                    label: 'Hierarchy',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    glowColor: const Color(0xFF2E7D32),
+                    onTap: () => onShortCutTap(5),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildShortcutItem(IconData icon, String label, VoidCallback onTap) {
-    return InkWell(
-        onTap: () => onTap(),
-        child: Column(
-          children: [
-            Container(
-              // width: 67,
-              // height: 66,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
+  Widget _buildShortcutCard({
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+    required VoidCallback onTap,
+    required Color glowColor,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: glowColor.withOpacity(0.35),
+                blurRadius: 16,
+                spreadRadius: 0,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.22),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiqaatCapsules() {
+    final ongoingCount = _memberMiqaats.where((m) => _isMiqaatOngoing(m)).length;
+    final upcomingCount = _memberMiqaats.where((m) => _isMiqaatUpcoming(m)).length;
+    final completedCount = _memberMiqaats.where((m) => _isMiqaatCompleted(m.tillDate)).length;
+
+    return Row(
+      children: [
+        _buildMiqaatCapsule(0, 'Ongoing', ongoingCount, const Color(0xFF2E7D32)),
+        const SizedBox(width: 6),
+        _buildMiqaatCapsule(1, 'Upcoming', upcomingCount, Colors.orange),
+        const SizedBox(width: 6),
+        _buildMiqaatCapsule(2, 'Completed', completedCount, AppColors.primary),
+      ],
+    );
+  }
+
+  Widget _buildMiqaatCapsule(int index, String label, int count, Color dotColor) {
+    final isSelected = _selectedMiqaatTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedMiqaatTab = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primaryDark : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? AppColors.primaryDark : Colors.grey[300]!,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primaryDark.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  '$label ($count)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : AppColors.textPrimary,
                   ),
-                ],
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              child: Icon(
-                icon,
-                color: const Color(0xFF4A1C1C),
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: const Color(0xFF461D17),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ));
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildMiqaatSection() {
+    final filteredList = _filteredMiqaats;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -216,91 +539,146 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Miqaat',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF333333),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.push(
-              //       context,
-              //       MaterialPageRoute(
-              //           builder: (context) => const MiqaatScreen()),
-              //     );
-              //   },
-              //   child: const Text(
-              //     'See All +',
-              //     style: TextStyle(
-              //       fontSize: 14,
-              //       color: Color(0xFF4A1C1C),
-              //       fontWeight: FontWeight.w600,
-              //     ),
-              //   ),
-              // ),
             ],
           ),
           const SizedBox(height: 12),
           if (_isLoadingMiqaats)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else if (_memberMiqaats.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Center(
-                child: Text(
-                  'No pending miqaats found',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF666666),
-                  ),
+                padding: const EdgeInsets.all(30.0),
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 3,
                 ),
               ),
             )
-          else
-            ..._memberMiqaats.map((miqaat) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildMiqaatCard(
-                    miqaat: miqaat,
-                    title: miqaat.miqaatName,
-                    dateRange:
-                        'FROM ${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)} (${miqaat.durationLabel})',
-                    location: miqaat.isInternational
-                        ? 'International Miqaat'
-                        : '${miqaat.jamaat}, ${miqaat.jamiyat}',
+          else if (_memberMiqaats.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.08),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.event_available_rounded,
+                    size: 48,
+                    color: AppColors.primary.withOpacity(0.25),
                   ),
-                )),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No miqaats found',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...
+            [
+              // Capsule filters
+              _buildMiqaatCapsules(),
+              const SizedBox(height: 14),
+              if (filteredList.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.08),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.event_available_rounded,
+                        size: 40,
+                        color: AppColors.primary.withOpacity(0.25),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _selectedMiqaatTab == 0
+                            ? 'No ongoing miqaats'
+                            : _selectedMiqaatTab == 1
+                                ? 'No upcoming miqaats'
+                                : 'No completed miqaats',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ...filteredList.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final miqaat = entry.value;
+                  return TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: Duration(milliseconds: 500 + (index * 120)),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, child) {
+                      return Opacity(
+                        opacity: value,
+                        child: Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildMiqaatCard(
+                        miqaat: miqaat,
+                        title: miqaat.miqaatName,
+                        dateRange: _formatDateRange(miqaat.fromDate, miqaat.tillDate, miqaat.miqaatDays),
+                        location: miqaat.isInternational
+                            ? 'International Miqaat'
+                            : '${miqaat.jamaat}, ${miqaat.jamiyat}',
+                      ),
+                    ),
+                  );
+                }),
+            ],
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDateRange(DateTime from, DateTime till, int days) {
     final months = [
-      'JAN',
-      'FEB',
-      'MAR',
-      'APR',
-      'MAY',
-      'JUN',
-      'JUL',
-      'AUG',
-      'SEP',
-      'OCT',
-      'NOV',
-      'DEC'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final day = date.day;
-    final month = months[date.month - 1];
-    final year = date.year;
-    return '$day $month $year';
+    final dayLabel = '$days Day${days == 1 ? '' : 's'}';
+    if (from.year == till.year && from.month == till.month) {
+      // Same month + year: "18 - 28 Feb 2026 (11 Days)"
+      return '${from.day} - ${till.day} ${months[from.month - 1]} ${from.year} ($dayLabel)';
+    } else if (from.year == till.year) {
+      // Same year, different month: "28 Feb - 5 Mar 2026 (6 Days)"
+      return '${from.day} ${months[from.month - 1]} - ${till.day} ${months[till.month - 1]} ${from.year} ($dayLabel)';
+    } else {
+      // Different years: "28 Dec 2025 - 5 Jan 2026 (9 Days)"
+      return '${from.day} ${months[from.month - 1]} ${from.year} - ${till.day} ${months[till.month - 1]} ${till.year} ($dayLabel)';
+    }
   }
 
   bool _isMiqaatCompleted(DateTime tillDate) {
@@ -316,24 +694,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required String dateRange,
     required String location,
   }) {
+    final isCompleted = _isMiqaatCompleted(miqaat.tillDate);
+
     return Container(
       decoration: BoxDecoration(
-        color: _isMiqaatCompleted(miqaat.tillDate)
+        color: isCompleted
             ? const Color(0xFFE8F5E9)
             : miqaat.isInternational
-                ? const Color(0xFFFFF8E1) // Golden background for international
+                ? AppColors.internationalGoldLight
                 : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: miqaat.isInternational
-            ? Border.all(color: const Color(0xFFFFD54F), width: 1.5)
-            : null,
+            ? Border.all(color: AppColors.internationalGold, width: 1.5)
+            : Border.all(color: Colors.grey.withOpacity(0.10), width: 1),
         boxShadow: [
           BoxShadow(
             color: miqaat.isInternational
-                ? const Color(0xFFFFD54F).withOpacity(0.3)
-                : Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+                ? AppColors.internationalGold.withOpacity(0.20)
+                : Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -347,26 +727,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Row(
                   children: [
-                    Flexible(
+                    Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                          horizontal: 10,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: miqaat.isInternational
-                              ? const Color(0xFFFFF3E0)
-                              : const Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(4),
+                          color: AppColors.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          dateRange,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: Color(0xFFE65100),
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_today_rounded,
+                              size: 15,
+                              color: AppColors.primaryDark,
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  dateRange,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: AppColors.primaryDark,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -374,14 +769,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
+                          horizontal: 8,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFFD54F), Color(0xFFFFA726)],
-                          ),
-                          borderRadius: BorderRadius.circular(4),
+                          gradient: AppColors.internationalGradient,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
                           '🌍 International',
@@ -394,33 +787,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                     ],
-                    const Spacer(),
+                    if (!miqaat.isInternational) const SizedBox(width: 6),
+                    if (miqaat.isInternational) const SizedBox(width: 6),
                     _buildStatusIcon(miqaat),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF333333),
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.location_on,
+                    Icon(
+                      Icons.location_on_outlined,
                       size: 16,
-                      color: Color(0xFF666666),
+                      color: AppColors.textSecondary,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       location,
-                      style: const TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 13,
-                        color: Color(0xFF666666),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -428,16 +822,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
           ),
+          // ── Action button strip ──
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 13),
             decoration: BoxDecoration(
-              color: miqaat.isInternational
-                  ? const Color(0xFFB8860B) // Dark golden for international
-                  : const Color(0xFF4A1C1C),
+              gradient: miqaat.isInternational
+                  ? const LinearGradient(
+                      colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
+                    )
+                  : AppColors.primaryGradient,
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(18),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
             ),
             child: InkWell(
@@ -476,14 +873,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   _showDayWiseEnrollmentDialog(miqaat);
                                 }
                               },
-                        child: Text(
-                          buttonText,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              buttonText,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (enableTap) ...[
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: Colors.white70,
+                                size: 14,
+                              ),
+                            ],
+                          ],
                         ),
                       );
                     })),
@@ -531,12 +941,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
         return Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 4,
+            horizontal: 10,
+            vertical: 5,
           ),
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             statusText,
@@ -574,8 +984,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF4A1C1C)),
+      builder: (context) => Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
 
@@ -609,25 +1019,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     miqaat.miqaatName,
-                    style: const TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4A1C1C),
+                      color: AppColors.primaryDark,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_formatDate(miqaat.fromDate)} - ${_formatDate(miqaat.tillDate)}',
-                    style: const TextStyle(
+                    _formatDateRange(miqaat.fromDate, miqaat.tillDate, miqaat.miqaatDays),
+                    style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: Color(0xFF666666),
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.normal,
                     ),
                   ),
@@ -635,17 +1045,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0),
-                      borderRadius: BorderRadius.circular(8),
+                      color: AppColors.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.info_outline, size: 14, color: Color(0xFFE65100)),
-                        SizedBox(width: 6),
+                        Icon(Icons.info_outline, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Enroll/Reject for each day. Past dates or Captain finalized days are locked.',
-                            style: TextStyle(fontSize: 10, color: Color(0xFFE65100)),
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              color: AppColors.primaryDark,
+                            ),
                           ),
                         ),
                       ],
@@ -660,10 +1073,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     maxHeight: MediaQuery.of(context).size.height * 0.5,
                   ),
                   child: enrollmentDays.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             'No enrollment data found',
-                            style: TextStyle(color: Color(0xFF666666)),
+                            style: GoogleFonts.poppins(color: AppColors.textSecondary),
                           ),
                         )
                       : ListView.builder(
@@ -712,7 +1125,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: cardColor,
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: borderColor),
                               ),
                               child: Column(
@@ -724,12 +1137,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF4A1C1C),
-                                          borderRadius: BorderRadius.circular(6),
+                                          gradient: AppColors.primaryGradient,
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
                                           'Day ${day.day}',
-                                          style: const TextStyle(
+                                          style: GoogleFonts.poppins(
                                             color: Colors.white,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
@@ -739,9 +1152,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       const SizedBox(width: 8),
                                       Text(
                                         day.miqaatDate,
-                                        style: TextStyle(
+                                        style: GoogleFonts.poppins(
                                           fontSize: 12,
-                                          color: Colors.grey[700],
+                                          color: AppColors.textSecondary,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -791,7 +1204,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                                 backgroundColor: Colors.green,
                                                 foregroundColor: Colors.white,
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderRadius: BorderRadius.circular(10),
                                                 ),
                                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                               ),
@@ -813,7 +1226,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                                 backgroundColor: Colors.red,
                                                 foregroundColor: Colors.white,
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderRadius: BorderRadius.circular(10),
                                                 ),
                                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                               ),
@@ -877,9 +1290,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text(
+                  child: Text(
                     'Close',
-                    style: TextStyle(color: Color(0xFF4A1C1C)),
+                    style: GoogleFonts.poppins(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -892,10 +1308,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildDayBadge(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         text,
@@ -910,7 +1326,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildStatusPill(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
@@ -982,4 +1398,3 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 }
-

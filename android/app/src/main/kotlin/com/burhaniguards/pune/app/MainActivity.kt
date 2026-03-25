@@ -1,4 +1,4 @@
-package com.burhaniguards.pune
+package com.burhaniguards.pune.app
 
 import io.flutter.embedding.android.FlutterActivity
 

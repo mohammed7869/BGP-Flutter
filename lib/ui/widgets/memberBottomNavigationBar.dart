@@ -1,3 +1,4 @@
+import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/addUserScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/attendanceScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/memberDashboard.dart';
@@ -108,7 +109,7 @@ class _CustomBottomNavBarMemberState extends State<CustomBottomNavBarMember> {
               child: Icon(
                 icon,
                 color: isSelected
-                    ? const Color(0xFF4A1C1C)
+                    ? AppColors.primary
                     : const Color(0xFF999999),
                 size: 28,
               ),
@@ -138,11 +139,11 @@ class _CustomBottomNavBarMemberState extends State<CustomBottomNavBarMember> {
       width: 56,
       height: 56,
       decoration: BoxDecoration(
-        color: const Color(0xFF4A1C1C),
+        color: AppColors.primaryDark,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4A1C1C).withOpacity(0.3),
+            color: AppColors.primaryDark.withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

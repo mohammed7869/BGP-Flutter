@@ -13,7 +13,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.burhaniguards.pune"
+    namespace = "com.burhaniguards.pune.app"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
     ndkVersion = flutter.ndkVersion
@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.burhaniguards.pune"
+        applicationId = "com.burhaniguards.pune.app"
         minSdk = flutter.minSdkVersion
         targetSdk = 35  // Required by Google Play (min API 35)
         versionCode = flutter.versionCode

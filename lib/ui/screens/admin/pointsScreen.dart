@@ -1,10 +1,13 @@
 import 'dart:convert';
 
 import 'package:burhaniguardsapp/core/constants/api_constants.dart';
+import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
+import 'package:burhaniguardsapp/core/utils/session_manager.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBarforPages.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
 class PointsScreen extends StatefulWidget {
@@ -70,6 +73,16 @@ class _PointsScreenState extends State<PointsScreen>
         },
       );
 
+      if (response.statusCode == 401) {
+        if (mounted) {
+          SessionManager.handleSessionExpiry(
+            context,
+            onReLoginSuccess: _load,
+          );
+        }
+        return;
+      }
+
       if (response.statusCode != 200) {
         String errorMessage = 'Failed to fetch points.';
         try {
@@ -86,7 +99,6 @@ class _PointsScreenState extends State<PointsScreen>
           .map((item) => MemberPointsDto.fromJson(item as Map<String, dynamic>))
           .toList();
 
-      // Sort by points descending for captain view
       if (_isCaptain) {
         members.sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
       }
@@ -97,10 +109,21 @@ class _PointsScreenState extends State<PointsScreen>
         _isLoading = false;
       });
 
-      // Start animation after data loads
       _animationController.forward();
     } catch (e) {
       if (!mounted) return;
+
+      if (SessionManager.isSessionExpired(e)) {
+        setState(() {
+          _isLoading = false;
+        });
+        SessionManager.handleSessionExpiry(
+          context,
+          onReLoginSuccess: _load,
+        );
+        return;
+      }
+
       setState(() {
         _error = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
@@ -111,79 +134,141 @@ class _PointsScreenState extends State<PointsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
           buildAppBarWithBackButton(context),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: _isCaptain
-                    ? const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFFFFFBF5), Colors.white],
-                      )
-                    : null,
-                color: _isCaptain ? null : Colors.white,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.emoji_events,
-                            color: Color(0xFFE65100), size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          _isCaptain ? 'Leaderboard' : 'My Points',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title section with icon badge
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
                           ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE65100).withOpacity(0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                        child: const Icon(
+                          Icons.emoji_events_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _isCaptain ? 'Leaderboard' : 'My Points',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            _isCaptain
+                                ? '${_members.length} members ranked'
+                                : 'Your performance tracker',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _error != null
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      _error!,
-                                      style: const TextStyle(color: Colors.red),
-                                      textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: _isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : _error != null
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.error_outline_rounded,
+                                      size: 48,
+                                      color: Colors.red.withOpacity(0.6)),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _error!,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.red,
+                                      fontSize: 14,
                                     ),
-                                    const SizedBox(height: 12),
-                                    ElevatedButton(
-                                      onPressed: _load,
-                                      child: const Text('Retry'),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : _members.isEmpty
-                                ? const Center(
-                                    child: Text(
-                                      'No points found',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  )
-                                : RefreshIndicator(
-                                    onRefresh: _load,
-                                    child: _isCaptain
-                                        ? _buildCaptainView()
-                                        : _buildMemberView(),
+                                    textAlign: TextAlign.center,
                                   ),
-                  ),
-                ],
-              ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton.icon(
+                                    onPressed: _load,
+                                    icon: const Icon(Icons.refresh, size: 18),
+                                    label: const Text('Retry'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : _members.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.stars_rounded,
+                                        size: 56,
+                                        color:
+                                            AppColors.primary.withOpacity(0.2),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No points found',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : RefreshIndicator(
+                                  onRefresh: _load,
+                                  color: AppColors.primary,
+                                  child: _isCaptain
+                                      ? _buildCaptainView()
+                                      : _buildMemberView(),
+                                ),
+                ),
+              ],
             ),
           ),
         ],
@@ -195,7 +280,6 @@ class _PointsScreenState extends State<PointsScreen>
     final topMembers = _members.take(3).toList();
     final otherMembers = _members.skip(3).toList();
 
-    // Create a map of points to count how many members have the same points
     final pointsCount = <int, int>{};
     for (final member in _members) {
       pointsCount[member.totalPoints] =
@@ -203,18 +287,17 @@ class _PointsScreenState extends State<PointsScreen>
     }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
-        // Top 3 Podium Section
         if (topMembers.isNotEmpty) _buildPodiumSection(topMembers, pointsCount),
         const SizedBox(height: 24),
         if (otherMembers.isNotEmpty) ...[
-          const Text(
+          Text(
             'Other Members',
-            style: TextStyle(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -230,18 +313,18 @@ class _PointsScreenState extends State<PointsScreen>
   }
 
   Widget _buildMemberView() {
-    // For non-captain view, only show the current user's data with their rank
     if (_members.isEmpty) {
-      return const Center(
-        child: Text('No points data available'),
+      return Center(
+        child: Text(
+          'No points data available',
+          style: GoogleFonts.poppins(color: AppColors.textSecondary),
+        ),
       );
     }
 
-    // Sort all members by points to calculate rank
     final sortedMembers = List<MemberPointsDto>.from(_members);
     sortedMembers.sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
 
-    // Find the current user's rank
     int userRank = 1;
     for (int i = 0; i < sortedMembers.length; i++) {
       if (sortedMembers[i].memberId == _currentUserId) {
@@ -250,14 +333,13 @@ class _PointsScreenState extends State<PointsScreen>
       }
     }
 
-    // Find current user in the original list
     final currentUserData = _members.firstWhere(
       (m) => m.memberId == _currentUserId,
       orElse: () => _members.first,
     );
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         _buildMemberCard(currentUserData, rank: userRank),
       ],
@@ -271,25 +353,21 @@ class _PointsScreenState extends State<PointsScreen>
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF4A1C1C), Color(0xFF6D2E2E)],
-          ),
+          gradient: AppColors.heroGradient,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4A1C1C).withOpacity(0.3),
-              blurRadius: 15,
+              color: AppColors.primaryDark.withOpacity(0.3),
+              blurRadius: 18,
               offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           children: [
-            const Text(
+            Text(
               '🏆 Top Performers 🏆',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -300,22 +378,22 @@ class _PointsScreenState extends State<PointsScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // 2nd Place
                 if (topMembers.length > 1)
                   _buildPodiumItem(topMembers[1], 2, 80,
-                      isTied: (pointsCount[topMembers[1].totalPoints] ?? 0) > 1)
+                      isTied:
+                          (pointsCount[topMembers[1].totalPoints] ?? 0) > 1)
                 else
                   const SizedBox(width: 90),
                 const SizedBox(width: 8),
-                // 1st Place
                 if (topMembers.isNotEmpty)
                   _buildPodiumItem(topMembers[0], 1, 100,
-                      isTied: (pointsCount[topMembers[0].totalPoints] ?? 0) > 1),
+                      isTied:
+                          (pointsCount[topMembers[0].totalPoints] ?? 0) > 1),
                 const SizedBox(width: 8),
-                // 3rd Place
                 if (topMembers.length > 2)
                   _buildPodiumItem(topMembers[2], 3, 60,
-                      isTied: (pointsCount[topMembers[2].totalPoints] ?? 0) > 1)
+                      isTied:
+                          (pointsCount[topMembers[2].totalPoints] ?? 0) > 1)
                 else
                   const SizedBox(width: 90),
               ],
@@ -329,9 +407,9 @@ class _PointsScreenState extends State<PointsScreen>
   Widget _buildPodiumItem(MemberPointsDto member, int rank, double height,
       {bool isTied = false}) {
     final colors = {
-      1: const Color(0xFFFFD700), // Gold
-      2: const Color(0xFFC0C0C0), // Silver
-      3: const Color(0xFFCD7F32), // Bronze
+      1: const Color(0xFFFFD700),
+      2: const Color(0xFFC0C0C0),
+      3: const Color(0xFFCD7F32),
     };
 
     final icons = {
@@ -355,13 +433,11 @@ class _PointsScreenState extends State<PointsScreen>
       },
       child: Column(
         children: [
-          // Medal icon
           Text(
             icons[rank] ?? '',
             style: const TextStyle(fontSize: 28),
           ),
           const SizedBox(height: 4),
-          // Avatar with glow
           Container(
             width: rank == 1 ? 60 : 50,
             height: rank == 1 ? 60 : 50,
@@ -388,7 +464,7 @@ class _PointsScreenState extends State<PointsScreen>
                 member.fullName.isNotEmpty
                     ? member.fullName[0].toUpperCase()
                     : '?',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: rank == 1 ? 24 : 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -397,12 +473,11 @@ class _PointsScreenState extends State<PointsScreen>
             ),
           ),
           const SizedBox(height: 8),
-          // Name
           SizedBox(
             width: 90,
             child: Text(
               member.fullName,
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: rank == 1 ? 13 : 11,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
@@ -413,23 +488,28 @@ class _PointsScreenState extends State<PointsScreen>
             ),
           ),
           const SizedBox(height: 4),
-          // Points badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: colors[rank],
               borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: colors[rank]!.withOpacity(0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Text(
               '${member.totalPoints} pts',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: rank == 1 ? 14 : 12,
                 fontWeight: FontWeight.bold,
                 color: rank == 1 ? Colors.black87 : Colors.white,
               ),
             ),
           ),
-          // Tied indicator
           if (isTied)
             Container(
               margin: const EdgeInsets.only(top: 4),
@@ -438,9 +518,9 @@ class _PointsScreenState extends State<PointsScreen>
                 color: Colors.orange,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
+              child: Text(
                 'TIE',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -448,7 +528,6 @@ class _PointsScreenState extends State<PointsScreen>
               ),
             ),
           const SizedBox(height: 8),
-          // Podium bar
           Container(
             width: 90,
             height: height,
@@ -469,7 +548,7 @@ class _PointsScreenState extends State<PointsScreen>
             child: Center(
               child: Text(
                 rank.toString(),
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.white.withOpacity(0.8),
@@ -488,7 +567,6 @@ class _PointsScreenState extends State<PointsScreen>
 
     return InkWell(
       onTap: () {
-        // Navigate for both captain and member (if it's their own data)
         if (_isCaptain || isCurrentUser) {
           Navigator.push(
             context,
@@ -511,50 +589,52 @@ class _PointsScreenState extends State<PointsScreen>
               : isCurrentUser
                   ? const Color(0xFFFFF8E1)
                   : Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: hasSamePoints
-                ? Colors.orange
+                ? Colors.orange.withOpacity(0.6)
                 : isCurrentUser
                     ? const Color(0xFFFFB300)
-                    : Colors.grey[300]!,
+                    : Colors.grey.withOpacity(0.12),
             width: (isCurrentUser || hasSamePoints) ? 2 : 1,
           ),
-          boxShadow: isCurrentUser
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFFFB300).withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : hasSamePoints
-                  ? [
-                      BoxShadow(
-                        color: Colors.orange.withOpacity(0.15),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
+          boxShadow: [
+            BoxShadow(
+              color: isCurrentUser
+                  ? const Color(0xFFFFB300).withOpacity(0.2)
+                  : hasSamePoints
+                      ? Colors.orange.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Row(
           children: [
             if (rank != null) ...[
               Container(
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
+                  gradient: isCurrentUser
+                      ? const LinearGradient(
+                          colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                        )
+                      : null,
+                  color: isCurrentUser ? null : AppColors.background,
                   shape: BoxShape.circle,
+                  border: isCurrentUser
+                      ? null
+                      : Border.all(color: Colors.grey.withOpacity(0.2)),
                 ),
                 child: Center(
                   child: Text(
                     '#$rank',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
+                      color: isCurrentUser ? Colors.white : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -562,23 +642,29 @@ class _PointsScreenState extends State<PointsScreen>
               const SizedBox(width: 10),
             ],
             Container(
-              width: 40,
-              height: 40,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
                 gradient: isCurrentUser
                     ? const LinearGradient(
                         colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
                       )
-                    : null,
-                color: isCurrentUser ? null : const Color(0xFFF5F5F5),
+                    : LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.1),
+                          AppColors.primaryLight.withOpacity(0.05),
+                        ],
+                      ),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isCurrentUser ? Colors.transparent : Colors.grey[300]!,
+                  color: isCurrentUser
+                      ? Colors.transparent
+                      : Colors.grey.withOpacity(0.15),
                 ),
               ),
               child: Icon(
-                Icons.person,
-                color: isCurrentUser ? Colors.white : Colors.grey,
+                Icons.person_rounded,
+                color: isCurrentUser ? Colors.white : AppColors.textSecondary,
                 size: 22,
               ),
             ),
@@ -592,12 +678,12 @@ class _PointsScreenState extends State<PointsScreen>
                       Flexible(
                         child: Text(
                           member.fullName,
-                          style: TextStyle(
+                          style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: isCurrentUser
                                 ? const Color(0xFFE65100)
-                                : Colors.black87,
+                                : AppColors.textPrimary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -608,12 +694,14 @@ class _PointsScreenState extends State<PointsScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE65100),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE65100), Color(0xFFFF8F00)],
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             'You',
-                            style: TextStyle(
+                            style: GoogleFonts.poppins(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -624,19 +712,18 @@ class _PointsScreenState extends State<PointsScreen>
                     ],
                   ),
                   if (member.itsId != null && member.itsId!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       'ITS ID: ${member.itsId}',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
                 ],
               ),
             ),
-            // TIE badge (show before points for tied members)
             if (hasSamePoints)
               Container(
                 margin: const EdgeInsets.only(right: 8),
@@ -645,9 +732,9 @@ class _PointsScreenState extends State<PointsScreen>
                   color: Colors.orange,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
+                child: Text(
                   'TIE',
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -663,24 +750,35 @@ class _PointsScreenState extends State<PointsScreen>
                       )
                     : null,
                 color: isCurrentUser ? null : const Color(0xFFFFF3E0),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: isCurrentUser
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFFE65100).withOpacity(0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.stars,
+                    Icons.stars_rounded,
                     size: 14,
-                    color: isCurrentUser ? Colors.white : const Color(0xFFE65100),
+                    color:
+                        isCurrentUser ? Colors.white : const Color(0xFFE65100),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '${member.totalPoints}',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color:
-                          isCurrentUser ? Colors.white : const Color(0xFFE65100),
+                      color: isCurrentUser
+                          ? Colors.white
+                          : const Color(0xFFE65100),
                     ),
                   ),
                 ],

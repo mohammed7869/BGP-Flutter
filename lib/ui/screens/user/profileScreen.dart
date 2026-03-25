@@ -4,6 +4,7 @@ import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/core/models/auth_models.dart';
 import 'package:burhaniguardsapp/core/constants/api_constants.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
+import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 import 'package:intl/intl.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -366,6 +367,50 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     }
   }
 
+  Future<void> _handleLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Log Out',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true && mounted) {
+      try {
+        await _localStorage.clearAll();
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+            (route) => false,
+          );
+        }
+      }
+    }
+  }
+
   // ─── BUILD ───────────────────────────────────────────────────────
 
   @override
@@ -567,6 +612,30 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                       _buildContactInfoCard(),
                       const SizedBox(height: 14),
                       _buildDetailsCard(),
+                      const SizedBox(height: 24),
+                      // ── LOGOUT BUTTON ──
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _handleLogout(context),
+                          icon: const Icon(Icons.exit_to_app, size: 20),
+                          label: const Text(
+                            'Log Out',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 20),
                     ],
                   ),

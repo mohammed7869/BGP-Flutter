@@ -1,26 +1,106 @@
+import 'package:burhaniguardsapp/core/constants/app_colors.dart';
+import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
+import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 import 'package:flutter/material.dart';
 
-Widget buildAppBarWithBackButton(context) {
+Widget buildAppBarWithBackButton(BuildContext context) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-    decoration: const BoxDecoration(
-      color: Color(0xFF4A1C1C),
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(20),
-        bottomRight: Radius.circular(20),
+    decoration: BoxDecoration(
+      gradient: AppColors.heroGradient,
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(24),
+        bottomRight: Radius.circular(24),
       ),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.primaryDark.withOpacity(0.30),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ],
     ),
     child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+        SizedBox(
+          width: 96,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white, size: 28),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ),
         ),
-        Image.asset('assets/images/burhani guards logo.png', height: 52),
-        const SizedBox(width: 48), // Placeholder for layout balance
+        Expanded(
+          child: Center(
+            child: Image.asset('assets/images/burhani guards logo.png',
+                height: 52),
+          ),
+        ),
+        SizedBox(
+          width: 96,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.calendar_month_outlined,
+                    color: Colors.white, size: 26),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const BohraCalendarScreen()),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded,
+                    color: Colors.white, size: 26),
+                onPressed: () async {
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Log Out'),
+                      content: const Text('Are you sure you want to log out?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text(
+                            'Log Out',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (shouldLogout == true) {
+                    final localStorage = LocalStorageService();
+                    await localStorage.clearAll();
+                    if (context.mounted) {
+                      Navigator.of(context, rootNavigator: true)
+                          .pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (context) => const UnifiedLoginScreen()),
+                        (route) => false,
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
       ],
     ),
   );

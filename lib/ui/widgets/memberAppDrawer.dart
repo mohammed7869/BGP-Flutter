@@ -1,4 +1,6 @@
+import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/privacyPolicyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/memberDashboard.dart';
@@ -7,13 +9,13 @@ import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
 import 'package:flutter/material.dart';
 
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({Key? key}) : super(key: key);
+  const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
       child: Container(
-        color: const Color(0xFF4A1C1C), // Matching your app bar color
+        color: AppColors.primaryDark,
         child: Column(
           children: [
             // Header Section with Logo
@@ -21,7 +23,7 @@ class AppDrawer extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
               decoration: const BoxDecoration(
-                color: Color(0xFF4A1C1C),
+                color: AppColors.primaryDark,
               ),
               child: Column(
                 children: [
@@ -43,23 +45,12 @@ class AppDrawer extends StatelessWidget {
                           return const Icon(
                             Icons.security,
                             size: 50,
-                            color: Color(0xFF4A1C1C),
+                            color: AppColors.primaryDark,
                           );
                         },
                       ),
                     ),
                   ),
-                  const SizedBox(height: 15),
-                  // Company Name
-                  // const Text(
-                  //   'Pankaj Mehandiratta Paints',
-                  //   style: TextStyle(
-                  //     color: Colors.white70,
-                  //     fontSize: 12,
-                  //     letterSpacing: 0.5,
-                  //   ),
-                  //   textAlign: TextAlign.center,
-                  // ),
                   const SizedBox(height: 20),
                   // Title
                   const Text(
@@ -88,7 +79,7 @@ class AppDrawer extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFFF8F0), // Light cream background
+                  color: AppColors.accent,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
@@ -107,7 +98,19 @@ class AppDrawer extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) => const HomeMiqaatScreen()),
                         );
-                        // Navigate to Home
+                      },
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.account_tree_rounded,
+                      title: 'Hierarchy',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const HierarchyScreen()),
+                        );
                       },
                     ),
                     _buildMenuItem(
@@ -120,7 +123,6 @@ class AppDrawer extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) => const MiqaatListScreen()),
                         );
-                        // Navigate to Miqaats
                       },
                     ),
                     _buildMenuItem(
@@ -133,7 +135,6 @@ class AppDrawer extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) => const AttendanceMiqaatScreen()),
                         );
-                        // Navigate to Attendance
                       },
                     ),
                     _buildMenuItem(
@@ -146,9 +147,10 @@ class AppDrawer extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) => const UserProfileScreen()),
                         );
-                        // Navigate to Profile
                       },
                     ),
+                    // Points Table is not yet implemented
+                    /*
                     _buildMenuItem(
                       context,
                       icon: Icons.event_outlined,
@@ -159,9 +161,9 @@ class AppDrawer extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) => const PointsTableScreen()),
                         );
-                        // Navigate to Enrolled Events
                       },
                     ),
+                    */
                     _buildMenuItem(
                       context,
                       icon: Icons.bookmark_border,
@@ -172,7 +174,6 @@ class AppDrawer extends StatelessWidget {
                           MaterialPageRoute(
                               builder: (_) => const EnrolledMiqaatScreen()),
                         );
-                        // Navigate to Saved Events
                       },
                     ),
                     _buildMenuItem(
@@ -196,7 +197,7 @@ class AppDrawer extends StatelessWidget {
 
             // Logout Button
             Container(
-              color: const Color(0xFFFFF8F0),
+              color: AppColors.accent,
               padding: const EdgeInsets.all(20),
               child: ListTile(
                 leading: const Icon(
@@ -233,13 +234,13 @@ class AppDrawer extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icon,
-        color: const Color(0xFF4A1C1C),
+        color: AppColors.primaryDark,
         size: 22,
       ),
       title: Text(
         title,
         style: const TextStyle(
-          color: Color(0xFF4A1C1C),
+          color: AppColors.primaryDark,
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),

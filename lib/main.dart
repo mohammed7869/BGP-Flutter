@@ -1,7 +1,6 @@
 import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -26,7 +25,10 @@ class MyApp extends StatelessWidget {
       title: 'Burhani Guards',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0D7377),
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
         textTheme: _getTextTheme(),
       ),
@@ -62,12 +64,11 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkLoginStatus() async {
     try {
       final authService = AuthService();
-      final isLoggedIn = await authService.isLoggedIn();
-      final userData = await authService.getStoredUser();
+      final hasValidSession = await authService.validateStoredSession();
 
       if (!mounted) return;
 
-      if (isLoggedIn && userData != null) {
+      if (hasValidSession) {
         // User is already logged in, go directly to dashboard
         Navigator.pushReplacement(
           context,

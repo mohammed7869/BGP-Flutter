@@ -161,6 +161,74 @@ class AuthService {
     return await _localStorage.isLoggedIn();
   }
 
+  /// Validates the stored session with the API.
+  ///
+  /// If the server explicitly says the token is invalid, local session data is
+  /// cleared so the user is taken back to login. Network/server issues keep the
+  /// current local session so users are not logged out unnecessarily.
+  Future<bool> validateStoredSession() async {
+    final isLoggedIn = await _localStorage.isLoggedIn();
+    final token = await _localStorage.getToken();
+    final userData = await _localStorage.getUserData();
+
+    if (!isLoggedIn || token == null || token.isEmpty || userData == null) {
+      await _localStorage.clearAll();
+      return false;
+    }
+
+    try {
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getUserProfile}');
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+        final refreshedUser = UserData(
+          id: (jsonResponse['id'] as num?)?.toInt() ?? userData.id,
+          profile: jsonResponse['profile']?.toString() ?? userData.profile,
+          itsId: jsonResponse['itsId']?.toString() ?? userData.itsId,
+          fullName: jsonResponse['fullName']?.toString() ?? userData.fullName,
+          email: jsonResponse['email']?.toString() ?? userData.email,
+          rank: jsonResponse['rank']?.toString() ?? userData.rank,
+          roles: (jsonResponse['roles'] as num?)?.toInt() ?? userData.roles,
+          jamiyat: jsonResponse['jamiyat']?.toString() ?? userData.jamiyat,
+          jamaat: jsonResponse['jamaat']?.toString() ?? userData.jamaat,
+          gender: jsonResponse['gender']?.toString() ?? userData.gender,
+          age: (jsonResponse['age'] as num?)?.toInt() ?? userData.age,
+          contact: jsonResponse['contact']?.toString() ?? userData.contact,
+          dateOfBirth:
+              jsonResponse['dateOfBirth']?.toString() ?? userData.dateOfBirth,
+          role: userData.role,
+        );
+
+        await _localStorage.saveUserData(refreshedUser);
+        return true;
+      }
+
+      if (response.statusCode == 401) {
+        await _localStorage.clearAll();
+        return false;
+      }
+
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   /// Update user profile (email, contact, dateOfBirth)
   Future<bool> updateProfile({
     String? email,
