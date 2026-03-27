@@ -417,6 +417,17 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
 
         if (user.roles == 2 &&
             miqaat.adminApproval.toLowerCase() == 'approved') {
+          // For International miqaats, captains cannot mark attendance
+          if (miqaat.isInternational) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Attendance for International miqaats is managed by Admin from the Admin Panel'),
+                backgroundColor: Color(0xFFB8860B),
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(

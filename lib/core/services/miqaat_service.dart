@@ -1084,6 +1084,7 @@ class EnrolledMember {
   final String? itsId;
   final bool? isAttended;
   final String? statusCategory;  // "Enrolled", "Pending", or "Rejected"
+  final String? adminStatus;
 
   EnrolledMember({
     required this.id,
@@ -1097,6 +1098,7 @@ class EnrolledMember {
     this.itsId,
     this.isAttended,
     this.statusCategory,
+    this.adminStatus,
   });
 
   factory EnrolledMember.fromJson(Map<String, dynamic> json) {
@@ -1116,6 +1118,7 @@ class EnrolledMember {
       itsId: json['itsId'] as String?,
       isAttended: json['isAttended'] as bool?,
       statusCategory: json['statusCategory'] as String?,
+      adminStatus: json['adminStatus'] as String?,
     );
   }
 }
@@ -1191,12 +1194,14 @@ class MemberEnrollmentDay {
   final int day;
   final String status;
   final String? finalStatus;
+  final String? adminStatus;
   final String miqaatDate;
 
   MemberEnrollmentDay({
     required this.day,
     required this.status,
     this.finalStatus,
+    this.adminStatus,
     required this.miqaatDate,
   });
 
@@ -1205,6 +1210,7 @@ class MemberEnrollmentDay {
       day: (json['day'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'Pending',
       finalStatus: json['finalStatus'] as String?,
+      adminStatus: json['adminStatus'] as String?,
       miqaatDate: json['miqaatDate'] as String? ?? '',
     );
   }

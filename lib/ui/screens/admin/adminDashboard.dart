@@ -1184,6 +1184,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                         ),
                                     ],
                                   ),
+                                  // Admin status row for International miqaats
+                                  if (miqaat.isInternational && isCaptainFinalized && day.finalStatus == 'Approved') ...[
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        _buildStatusPill(
+                                          'Admin: ${day.adminStatus ?? 'Pending'}',
+                                          day.adminStatus == 'Approved'
+                                              ? Colors.green
+                                              : day.adminStatus == 'Rejected'
+                                                  ? Colors.red
+                                                  : const Color(0xFFB8860B),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                   // Action buttons (only if not locked)
                                   if (!isLocked) ...[
                                     const SizedBox(height: 10),
@@ -1366,6 +1382,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           day: dayNumber,
           status: status,
           finalStatus: enrollmentDays[index].finalStatus,
+          adminStatus: enrollmentDays[index].adminStatus,
           miqaatDate: enrollmentDays[index].miqaatDate,
         );
       });

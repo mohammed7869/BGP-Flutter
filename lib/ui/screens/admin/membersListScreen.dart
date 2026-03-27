@@ -1279,6 +1279,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
           day: dayNumber,
           status: enrollmentDays[index].status,
           finalStatus: finalStatus,
+          adminStatus: enrollmentDays[index].adminStatus,
           miqaatDate: enrollmentDays[index].miqaatDate,
         );
       });

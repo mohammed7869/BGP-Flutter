@@ -417,7 +417,7 @@ class _HierarchyScreenState extends State<HierarchyScreen>
             members: grouped[activeRanks[i]]!,
             isLast: i == activeRanks.length - 1,
           ),
-          if (i < activeRanks.length - 1) _buildConnector(),
+          if (i < activeRanks.length - 1) const SizedBox(height: 16),
         ],
         // For Captain: show member count footer
         if (_isCaptain && grouped.containsKey(MemberRank.member))
@@ -446,14 +446,12 @@ class _HierarchyScreenState extends State<HierarchyScreen>
       );
     }
 
-    // Multiple members at the same level – show them side by side with branching
+    // Multiple members at the same level – show them side by side
     return Column(
       children: [
         // Rank label
         _buildRankBadge(rankText, rankColor),
         const SizedBox(height: 10),
-        // Branch connector
-        if (members.length > 1) _buildBranchTop(members.length),
         // Member cards
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -666,53 +664,12 @@ class _HierarchyScreenState extends State<HierarchyScreen>
     );
   }
 
-  // ── Connector (vertical line between levels) ──
-  Widget _buildConnector() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Column(
-        children: [
-          Container(
-            width: 2.5,
-            height: 28,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary.withOpacity(0.4),
-                  AppColors.primary.withOpacity(0.15),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Icon(Icons.keyboard_arrow_down_rounded,
-              size: 18, color: AppColors.primary.withOpacity(0.4)),
-        ],
-      ),
-    );
-  }
-
-  // ── Branch connector for multiple members ──
-  Widget _buildBranchTop(int count) {
-    return SizedBox(
-      height: 18,
-      child: CustomPaint(
-        size: Size(count * 130.0, 18),
-        painter: _BranchPainter(
-          color: AppColors.primary.withOpacity(0.25),
-          count: count,
-        ),
-      ),
-    );
-  }
 
   // ── Member count footer (for captains) ──
   Widget _buildMemberCountFooter(int count) {
     return Column(
       children: [
-        _buildConnector(),
+        const SizedBox(height: 16),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -847,39 +804,3 @@ class _HierarchyScreenState extends State<HierarchyScreen>
   }
 }
 
-// ── Custom painter for branch lines ──
-class _BranchPainter extends CustomPainter {
-  final Color color;
-  final int count;
-
-  _BranchPainter({required this.color, required this.count});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final center = size.width / 2;
-    const cardWidth = 130.0;
-    final totalWidth = count * cardWidth;
-    final startX = center - totalWidth / 2 + cardWidth / 2;
-
-    // Draw vertical line from top center
-    canvas.drawLine(Offset(center, 0), Offset(center, 10), paint);
-
-    // Draw horizontal line
-    final endX = startX + (count - 1) * cardWidth;
-    canvas.drawLine(Offset(startX, 10), Offset(endX, 10), paint);
-
-    // Draw vertical ticks down to each card
-    for (int i = 0; i < count; i++) {
-      final x = startX + i * cardWidth;
-      canvas.drawLine(Offset(x, 10), Offset(x, size.height), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
