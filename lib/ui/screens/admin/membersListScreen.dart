@@ -1185,6 +1185,43 @@ class _MembersListScreenState extends State<MembersListScreen> {
                                       ],
                                     ),
                                   ],
+                                  // Admin status row for International miqaats (only when captain approved)
+                                  if (widget.miqaat != null &&
+                                      widget.miqaat!.isInternational &&
+                                      isCaptainFinalized &&
+                                      day.finalStatus == 'Approved') ...[
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          day.adminStatus == 'Approved'
+                                              ? Icons.admin_panel_settings
+                                              : day.adminStatus == 'Rejected'
+                                                  ? Icons.block
+                                                  : Icons.hourglass_top_rounded,
+                                          size: 14,
+                                          color: day.adminStatus == 'Approved'
+                                              ? Colors.green
+                                              : day.adminStatus == 'Rejected'
+                                                  ? Colors.red
+                                                  : const Color(0xFFB8860B),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Admin: ${day.adminStatus ?? 'Pending'}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: day.adminStatus == 'Approved'
+                                                ? Colors.green[700]
+                                                : day.adminStatus == 'Rejected'
+                                                    ? Colors.red[700]
+                                                    : const Color(0xFFB8860B),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                   // Captain action buttons (only for enrolled days, not yet finalized by captain)
                                   if (isEnrolled && !isCaptainFinalized) ...[
                                     const SizedBox(height: 10),
