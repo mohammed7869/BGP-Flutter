@@ -1,7 +1,7 @@
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
-import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/privacyPolicyScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/qardan_hasana/qardan_list_screen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/memberDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/user/miqaatListScreen.dart';
@@ -102,14 +102,13 @@ class AppDrawer extends StatelessWidget {
                     ),
                     _buildMenuItem(
                       context,
-                      icon: Icons.account_tree_rounded,
-                      title: 'Hierarchy',
+                      icon: Icons.currency_rupee,
+                      title: 'Qardan Hasana',
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const HierarchyScreen()),
+                              builder: (_) => const QardanListScreen()),
                         );
                       },
                     ),

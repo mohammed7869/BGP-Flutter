@@ -525,7 +525,7 @@ class MiqaatService {
     }
   }
 
-  Future<List<EnrolledMember>> getApprovedMembersForAttendance(int miqaatId,
+  Future<AttendanceMembersResult> getApprovedMembersForAttendance(int miqaatId,
       {int day = 1}) async {
     try {
       final token = await _localStorage.getToken();
@@ -553,13 +553,31 @@ class MiqaatService {
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
-        if (jsonResponse is List) {
-          return jsonResponse
+        
+        // Handle new response format: { members: [...], attendanceWindow: {...} }
+        List<EnrolledMember> members = [];
+        AttendanceWindowInfo? windowInfo;
+        
+        if (jsonResponse is Map<String, dynamic>) {
+          // New format
+          final membersJson = jsonResponse['members'];
+          if (membersJson is List) {
+            members = membersJson
+                .map((item) => EnrolledMember.fromJson(item as Map<String, dynamic>))
+                .toList();
+          }
+          final windowJson = jsonResponse['attendanceWindow'];
+          if (windowJson is Map<String, dynamic>) {
+            windowInfo = AttendanceWindowInfo.fromJson(windowJson);
+          }
+        } else if (jsonResponse is List) {
+          // Legacy format (backward compatibility)
+          members = jsonResponse
               .map((item) => EnrolledMember.fromJson(item as Map<String, dynamic>))
               .toList();
-        } else {
-          throw Exception('Invalid response format from server.');
         }
+        
+        return AttendanceMembersResult(members: members, windowInfo: windowInfo);
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized. Please login again.');
       } else if (response.statusCode == 403) {
@@ -1214,4 +1232,48 @@ class MemberEnrollmentDay {
       miqaatDate: json['miqaatDate'] as String? ?? '',
     );
   }
+}
+
+/// Attendance time window information returned from the API
+class AttendanceWindowInfo {
+  final bool isOpen;
+  final bool isUpcoming;
+  final bool isExpired;
+  final DateTime windowStart;
+  final DateTime windowEnd;
+  final String message;
+  final String dayLabel;
+
+  AttendanceWindowInfo({
+    required this.isOpen,
+    required this.isUpcoming,
+    required this.isExpired,
+    required this.windowStart,
+    required this.windowEnd,
+    required this.message,
+    required this.dayLabel,
+  });
+
+  factory AttendanceWindowInfo.fromJson(Map<String, dynamic> json) {
+    return AttendanceWindowInfo(
+      isOpen: json['isOpen'] as bool? ?? false,
+      isUpcoming: json['isUpcoming'] as bool? ?? false,
+      isExpired: json['isExpired'] as bool? ?? false,
+      windowStart: DateTime.parse(json['windowStart'] as String),
+      windowEnd: DateTime.parse(json['windowEnd'] as String),
+      message: json['message'] as String? ?? '',
+      dayLabel: json['dayLabel'] as String? ?? '',
+    );
+  }
+}
+
+/// Result wrapper for approved members + attendance window info
+class AttendanceMembersResult {
+  final List<EnrolledMember> members;
+  final AttendanceWindowInfo? windowInfo;
+
+  AttendanceMembersResult({
+    required this.members,
+    this.windowInfo,
+  });
 }

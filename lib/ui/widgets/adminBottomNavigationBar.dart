@@ -4,6 +4,7 @@ import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/createMiqaatScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/underDevelopmentScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/qardan_hasana/qardan_list_screen.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
 
 import 'package:flutter/material.dart';
@@ -52,8 +53,7 @@ class _CustomBottomNavBarCaptainState extends State<CustomBottomNavBarCaptain> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-            builder: (context) =>
-                const AttendanceMiqaatScreen(initialFilter: 'Miqaats')),
+            builder: (context) => const QardanListScreen()),
       );
     } else if (index == 4) {
       Navigator.push(
@@ -92,7 +92,7 @@ class _CustomBottomNavBarCaptainState extends State<CustomBottomNavBarCaptain> {
               _buildNavItem(Icons.home_rounded, 'Home', 0),
               _buildNavItem(Icons.account_tree_rounded, 'Hierarchy', 1),
               _buildCenterButton(),
-              _buildNavItem(Icons.list_rounded, 'Miqaats', 3),
+              _buildNavItem(Icons.currency_rupee_rounded, 'Qardan', 3),
               _buildNavItem(Icons.person_outline_rounded, 'Profile', 4),
             ],
           ),

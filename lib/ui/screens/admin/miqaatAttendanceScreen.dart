@@ -32,6 +32,7 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   bool _isMarkingAttendance = false;
   String? _errorMessage;
   int _selectedDay = 1;
+  AttendanceWindowInfo? _windowInfo;
 
   DateTime _getSelectedDayDate() {
     return widget.miqaat.fromDate.add(Duration(days: _selectedDay - 1));
@@ -70,12 +71,13 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
     });
 
     try {
-      final members = await _miqaatService.getApprovedMembersForAttendance(
+      final result = await _miqaatService.getApprovedMembersForAttendance(
         widget.miqaat.id,
         day: _selectedDay,
       );
       setState(() {
-        _members = members;
+        _members = result.members;
+        _windowInfo = result.windowInfo;
         _isLoading = false;
       });
     } catch (e) {
@@ -87,6 +89,9 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   }
 
   void _toggleMemberSelection(int memberId) {
+    // Don't allow selection if window is closed
+    if (_windowInfo != null && !_windowInfo!.isOpen) return;
+    
     setState(() {
       if (_selectedMemberIds.contains(memberId)) {
         _selectedMemberIds.remove(memberId);
@@ -399,6 +404,14 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                           ],
                         ),
                       ],
+                      // ── Attendance Window Info Banner ──
+                      if (_windowInfo != null) ...[
+                        const SizedBox(height: 12),
+                        _buildWindowInfoBanner(),
+                      ],
+                      // ── Attendance Rules Note ──
+                      const SizedBox(height: 8),
+                      _buildAttendanceRulesNote(),
                     ],
                   ),
                 ),
@@ -486,57 +499,179 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _selectedMemberIds.isNotEmpty
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, -3),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isMarkingAttendance ? null : _markAttendance,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: widget.miqaat.isInternational
-                          ? const Color(0xFFB8860B)
-                          : AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      elevation: 4,
-                    ),
-                    child: _isMarkingAttendance
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : Text(
-                            'Mark Attended',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
+      bottomNavigationBar: _buildBottomBar(),
+    );
+  }
+
+  Widget? _buildBottomBar() {
+    final bool windowClosed = _windowInfo != null && !_windowInfo!.isOpen;
+
+    if (windowClosed) {
+      // Show closed window message at bottom
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          border: Border(top: BorderSide(color: Colors.red.shade200)),
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              Icon(Icons.lock_clock, color: Colors.red.shade700, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _windowInfo?.isExpired == true
+                      ? 'Attendance window has closed. Marking is no longer allowed.'
+                      : 'Attendance window has not opened yet.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-            )
-          : null,
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_selectedMemberIds.isEmpty) return null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isMarkingAttendance ? null : _markAttendance,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: widget.miqaat.isInternational
+                  ? const Color(0xFFB8860B)
+                  : AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 4,
+            ),
+            child: _isMarkingAttendance
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text(
+                    'Mark Attended',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds the attendance window status banner
+  Widget _buildWindowInfoBanner() {
+    final info = _windowInfo!;
+    Color bgColor;
+    Color borderColor;
+    Color iconColor;
+    IconData icon;
+
+    if (info.isOpen) {
+      bgColor = const Color(0xFFE8F5E9);
+      borderColor = const Color(0xFF66BB6A);
+      iconColor = const Color(0xFF2E7D32);
+      icon = Icons.check_circle_outline;
+    } else if (info.isUpcoming) {
+      bgColor = const Color(0xFFFFF8E1);
+      borderColor = const Color(0xFFFFCA28);
+      iconColor = const Color(0xFFF57F17);
+      icon = Icons.schedule;
+    } else {
+      bgColor = const Color(0xFFFFEBEE);
+      borderColor = const Color(0xFFEF5350);
+      iconColor = const Color(0xFFC62828);
+      icon = Icons.lock_clock;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              info.message,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: iconColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the attendance rules note for captains
+  Widget _buildAttendanceRulesNote() {
+    final isSingleDay = widget.miqaat.miqaatDays == 1;
+    final ruleText = isSingleDay
+        ? 'For single-day miqaat: Attendance can be marked from ${_formatShortDate(widget.miqaat.fromDate)} until 24 hours after the miqaat ends.'
+        : 'For multi-day miqaat: Attendance for each day can be marked starting from that day until 24 hours after that day ends.';
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              ruleText,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: Colors.blue.shade800,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -92,6 +92,18 @@ class _MembersListScreenState extends State<MembersListScreen> {
     }
   }
 
+  /// Filters members to only show those whose jamaat matches the captain's jamaat.
+  List<EnrolledMember> _filterMembersByCaptainJamaat(List<EnrolledMember> members) {
+    if (!_isCaptain || _userJamaat == null || _userJamaat!.isEmpty) {
+      return members;
+    }
+    final captainJamaat = _userJamaat!.trim().toLowerCase();
+    return members.where((m) {
+      final memberJamaat = (m.jamaat ?? '').trim().toLowerCase();
+      return memberJamaat == captainJamaat;
+    }).toList();
+  }
+
   Future<void> _loadEnrolledMembers() async {
     if (widget.miqaat == null) return;
     setState(() => _isLoading = true);
@@ -99,10 +111,12 @@ class _MembersListScreenState extends State<MembersListScreen> {
     try {
       final members =
           await _miqaatService.getAllMembersByMiqaatId(widget.miqaat!.id);
+      // Captain should only see members from their own jamaat
+      final filteredMembers = _filterMembersByCaptainJamaat(members);
       setState(() {
-        _allMembers = members;
+        _allMembers = filteredMembers;
         _enrolledMembers =
-            members.where((m) => m.statusCategory == 'Enrolled').toList();
+            filteredMembers.where((m) => m.statusCategory == 'Enrolled').toList();
         _isLoading = false;
       });
     } catch (e) {
