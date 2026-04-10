@@ -18,7 +18,7 @@ class QardanHasanaService {
   /// Submit a new Qardan Hasana application
   Future<QardanHasanaApplication> createApplication({
     required String applicantName,
-    String? applicantOccupation,
+    required String applicantOccupation,
     required String applicantMobile,
     String? reason,
     required double amountRequested,
@@ -110,6 +110,82 @@ class QardanHasanaService {
     } catch (e) {
       _handleConnectionError(e);
       rethrow;
+    }
+  }
+
+  /// Get all applications (role-based: captain sees jamaat, admin sees all)
+  Future<List<QardanHasanaListItem>> getAllApplications() async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) throw Exception('User not authenticated');
+
+      final url = Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        if (jsonResponse is List) {
+          return jsonResponse
+              .map((item) =>
+                  QardanHasanaListItem.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+        throw Exception('Invalid response format');
+      } else {
+        _handleErrorResponse(response, 'Failed to fetch applications');
+        throw Exception('Failed to fetch applications');
+      }
+    } catch (e) {
+      _handleConnectionError(e);
+      rethrow;
+    }
+  }
+
+  /// Check if the current user can apply for Qardan Hasana
+  Future<bool> canApply() async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) throw Exception('User not authenticated');
+
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint/can-apply');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        return jsonResponse['canApply'] == true;
+      }
+      return true; // Default to allowing if check fails
+    } catch (e) {
+      return true; // Default to allowing if check fails
     }
   }
 
@@ -224,6 +300,42 @@ class QardanHasanaService {
       } else {
         _handleErrorResponse(response, 'Failed to fetch captain');
         throw Exception('Failed to fetch captain');
+      }
+    } catch (e) {
+      _handleConnectionError(e);
+      rethrow;
+    }
+  }
+
+  /// Captain approves the application
+  Future<void> captainApprove(int applicationId) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) throw Exception('User not authenticated');
+
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint/$applicationId/captain-approve');
+
+      final response = await http
+          .put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else {
+        _handleErrorResponse(response, 'Failed to approve application');
+        throw Exception('Failed to approve application');
       }
     } catch (e) {
       _handleConnectionError(e);

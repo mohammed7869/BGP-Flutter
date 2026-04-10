@@ -15,8 +15,18 @@ class QardanApplyScreen extends StatefulWidget {
 
 class _QardanApplyScreenState extends State<QardanApplyScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final QardanHasanaService _service = QardanHasanaService();
   final LocalStorageService _localStorage = LocalStorageService();
+
+  // Keys for scrolling to invalid fields
+  final _nameKey = GlobalKey();
+  final _occupationKey = GlobalKey();
+  final _mobileKey = GlobalKey();
+  final _reasonKey = GlobalKey();
+  final _amountKey = GlobalKey();
+  final _guarantorKey = GlobalKey();
+  final _termsKey = GlobalKey();
 
   // Auto-filled fields
   String _date = '';
@@ -89,21 +99,54 @@ class _QardanApplyScreenState extends State<QardanApplyScreen> {
     }
   }
 
+  void _scrollToField(GlobalKey key) {
+    final context = key.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        alignment: 0.3,
+      );
+    }
+  }
+
+  GlobalKey? _findFirstInvalidField() {
+    if (_nameController.text.trim().isEmpty) return _nameKey;
+    if (_occupationController.text.trim().isEmpty) return _occupationKey;
+    if (_mobileController.text.trim().isEmpty ||
+        _mobileController.text.trim().length < 10) return _mobileKey;
+    if (_reasonController.text.trim().isEmpty) return _reasonKey;
+    final amount = int.tryParse(_amountController.text.trim());
+    if (_amountController.text.trim().isEmpty ||
+        amount == null || amount <= 0 || amount > 20000) return _amountKey;
+    if (_selectedGuarantor == null) return _guarantorKey;
+    return null;
+  }
+
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (!_termsAccepted) {
+    if (!_formKey.currentState!.validate()) {
+      final invalidKey = _findFirstInvalidField();
+      if (invalidKey != null) {
+        _scrollToField(invalidKey);
+      }
+      return;
+    }
+    if (_selectedGuarantor == null) {
+      _scrollToField(_guarantorKey);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please accept the Terms & Conditions'),
+          content: Text('Please select a Guarantor Member'),
           backgroundColor: AppColors.error,
         ),
       );
       return;
     }
-    if (_selectedGuarantor == null) {
+    if (!_termsAccepted) {
+      _scrollToField(_termsKey);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a Guarantor Member'),
+          content: Text('Please accept the Terms & Conditions'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -115,9 +158,7 @@ class _QardanApplyScreenState extends State<QardanApplyScreen> {
     try {
       await _service.createApplication(
         applicantName: _nameController.text.trim(),
-        applicantOccupation: _occupationController.text.trim().isEmpty
-            ? null
-            : _occupationController.text.trim(),
+        applicantOccupation: _occupationController.text.trim(),
         applicantMobile: _mobileController.text.trim(),
         reason: _reasonController.text.trim().isEmpty
             ? null
@@ -186,6 +227,7 @@ class _QardanApplyScreenState extends State<QardanApplyScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _nameController.dispose();
     _occupationController.dispose();
     _mobileController.dispose();
@@ -209,6 +251,7 @@ class _QardanApplyScreenState extends State<QardanApplyScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.primary))
           : SingleChildScrollView(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
               child: Form(
                 key: _formKey,
@@ -258,69 +301,89 @@ class _QardanApplyScreenState extends State<QardanApplyScreen> {
                       _buildReadOnlyField('Date', _date),
                       _buildReadOnlyField('Mohallah', _mohallah),
                       _buildReadOnlyField('ITS No', _itsNo),
-                      _buildTextField(
-                        controller: _nameController,
-                        label: 'Name (As Per Bank) *',
-                        icon: Icons.badge_outlined,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Required' : null,
+                      Container(
+                        key: _nameKey,
+                        child: _buildTextField(
+                          controller: _nameController,
+                          label: 'Name (As Per Bank) *',
+                          icon: Icons.badge_outlined,
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
                       ),
-                      _buildTextField(
-                        controller: _occupationController,
-                        label: 'Occupation',
-                        icon: Icons.work_outline,
+                      Container(
+                        key: _occupationKey,
+                        child: _buildTextField(
+                          controller: _occupationController,
+                          label: 'Occupation *',
+                          icon: Icons.work_outline,
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
                       ),
-                      _buildTextField(
-                        controller: _mobileController,
-                        label: 'Mobile No *',
-                        icon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(10),
-                        ],
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Required';
-                          if (v.trim().length < 10) return 'Enter 10 digits';
-                          return null;
-                        },
+                      Container(
+                        key: _mobileKey,
+                        child: _buildTextField(
+                          controller: _mobileController,
+                          label: 'Mobile No *',
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
+                          ],
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'Required';
+                            if (v.trim().length < 10) return 'Enter 10 digits';
+                            return null;
+                          },
+                        ),
                       ),
-                      _buildTextField(
-                        controller: _reasonController,
-                        label: 'Reason for Qardan *',
-                        icon: Icons.note_alt_outlined,
-                        maxLines: 3,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Required' : null,
+                      Container(
+                        key: _reasonKey,
+                        child: _buildTextField(
+                          controller: _reasonController,
+                          label: 'Reason for Qardan *',
+                          icon: Icons.note_alt_outlined,
+                          maxLines: 3,
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
                       ),
-                      _buildTextField(
-                        controller: _amountController,
-                        label: 'Amount (In Figure) *',
-                        icon: Icons.currency_rupee,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(5),
-                        ],
-                        prefix: '₹ ',
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Required';
-                          final amount = int.tryParse(v.trim());
-                          if (amount == null || amount <= 0) {
-                            return 'Enter valid amount';
-                          }
-                          if (amount > 20000) {
-                            return 'Maximum ₹20,000';
-                          }
-                          return null;
-                        },
+                      Container(
+                        key: _amountKey,
+                        child: _buildTextField(
+                          controller: _amountController,
+                          label: 'Amount (In Figure) *',
+                          icon: Icons.currency_rupee,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(5),
+                          ],
+                          prefix: '₹ ',
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'Required';
+                            final amount = int.tryParse(v.trim());
+                            if (amount == null || amount <= 0) {
+                              return 'Enter valid amount';
+                            }
+                            if (amount > 20000) {
+                              return 'Maximum ₹20,000';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
                     ]),
                     const SizedBox(height: 20),
 
                     // ── GUARANTOR SECTION ──
-                    _buildSectionHeader(
+                    Container(
+                      key: _guarantorKey,
+                      child: _buildSectionHeader(
                         'Guarantor Section', Icons.verified_user_outlined),
+                    ),
                     const SizedBox(height: 12),
                     _buildCard([
                       // Captain (Guarantor 1)
@@ -432,8 +495,11 @@ class _QardanApplyScreenState extends State<QardanApplyScreen> {
                     const SizedBox(height: 20),
 
                     // ── TERMS & CONDITIONS ──
-                    _buildSectionHeader(
-                        'Terms & Conditions', Icons.description_outlined),
+                    Container(
+                      key: _termsKey,
+                      child: _buildSectionHeader(
+                          'Terms & Conditions', Icons.description_outlined),
+                    ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -452,52 +518,144 @@ class _QardanApplyScreenState extends State<QardanApplyScreen> {
                               color: AppColors.background,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const SingleChildScrollView(
-                              child: Text(
-                                '1. Nature of Qardan\n'
-                                'The amount given under this scheme is Qardan Hasana (interest-free), strictly for need-based assistance. '
-                                'No interest, profit, service charge, or benefit (monetary or non-monetary) shall be charged by BGP.\n\n'
-                                '2. Eligibility\n'
-                                'Only registered BGP members are eligible to apply. The applicant must belong to the same Mohallah under which the application is submitted. '
-                                'Applicants must have no pending dues or unresolved disciplinary matters with BGP.\n\n'
-                                '3. Qardan Amount\n'
-                                'Maximum Qardan amount permissible: ₹20,000 (Rupees Twenty Thousand Only). '
-                                'Sanctioned amount may be less than the requested amount, based on BGP assessment.\n\n'
-                                '4. Purpose of Qardan\n'
-                                'The Qardan must be used only for genuine and lawful purposes. '
-                                'BGP reserves the right to seek clarification regarding the purpose of the qardan.\n\n'
-                                '5. Guarantors\n'
-                                'Two guarantors are mandatory: Guarantor 1 (Default): Mohallah Captain of the applicant. '
-                                'Guarantor 2: Any active BGP member from the same Mohallah. '
-                                'Guarantors must be financially responsible. Have no outstanding Qardan Hasana dues. '
-                                'Guarantors accept joint responsibility for repayment in case of default.\n\n'
-                                '6. Repayment Terms\n'
-                                'Repayment shall be made without delay as per the mutually agreed schedule. '
-                                'Repayment may be: Lump sum, or Monthly installments (as approved by BGP). '
-                                'Early repayment is allowed and encouraged. No extension shall be granted without prior written approval of BGP.\n\n'
-                                '7. Default & Recovery\n'
-                                'In case of failure to repay: Applicant shall be reminded verbally and/or in writing. '
-                                'Guarantors shall be informed and requested to intervene. '
-                                'If the applicant continues to default: Guarantors shall be liable to repay the outstanding amount. '
-                                'No interest or penalty shall be imposed under any circumstances.\n\n'
-                                '8. Discipline & Conduct\n'
-                                'Repeated default may result in: Temporary or permanent disqualification from future BGP benefits. '
-                                'Reporting to Mohallah committee for resolution. '
-                                'Any false information provided shall result in immediate cancellation of the qardan.\n\n'
-                                '9. Documentation & Records\n'
-                                'Applicant and guarantors must submit: Valid ID proof (as required by BGP). '
-                                'Signatures/thumb impressions on the application form. BGP shall maintain records for internal accountability.\n\n'
-                                '10. Discretion of BGP\n'
-                                'Approval or rejection of the qardan is at the sole discretion of BGP. '
-                                'BGP reserves the right to modify the scheme rules with prior notice.\n\n'
-                                '11. Declaration\n'
-                                'I hereby declare that all information provided by me is true and correct. '
-                                'I understand that this amount is a Qardan Hasana, entrusted to me as an amanat, '
-                                'and I take full moral and financial responsibility to repay it within the agreed time.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  height: 1.5,
+                            child: SingleChildScrollView(
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    height: 1.5,
+                                  ),
+                                  children: [
+                                    const TextSpan(
+                                      text: '1. Nature of Qardan\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'The amount given under this scheme is Qardan Hasana (interest-free), strictly for need-based assistance. '
+                                          'No interest, profit, service charge, or benefit (monetary or non-monetary) shall be charged by BGP.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '2. Eligibility\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'Only registered BGP members are eligible to apply. The applicant must belong to the same Mohallah under which the application is submitted. '
+                                          'Applicants must have no pending dues or unresolved disciplinary matters with BGP.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '3. Qardan Amount\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'Maximum Qardan amount permissible: ₹20,000 (Rupees Twenty Thousand Only). '
+                                          'Sanctioned amount may be less than the requested amount, based on BGP assessment.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '4. Purpose of Qardan\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'The Qardan must be used only for genuine and lawful purposes. '
+                                          'BGP reserves the right to seek clarification regarding the purpose of the qardan.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '5. Guarantors\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'Two guarantors are mandatory: Guarantor 1 (Default): Mohallah Captain of the applicant. '
+                                          'Guarantor 2: Any active BGP member from the same Mohallah. '
+                                          'Guarantors must be financially responsible. Have no outstanding Qardan Hasana dues. '
+                                          'Guarantors accept joint responsibility for repayment in case of default.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '6. Repayment Terms\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'Repayment shall be made without delay as per the mutually agreed schedule. '
+                                          'Repayment may be: Lump sum, or Monthly installments (as approved by BGP). '
+                                          'Early repayment is allowed and encouraged. No extension shall be granted without prior written approval of BGP.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '7. Default & Recovery\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'In case of failure to repay: Applicant shall be reminded verbally and/or in writing. '
+                                          'Guarantors shall be informed and requested to intervene. '
+                                          'If the applicant continues to default: Guarantors shall be liable to repay the outstanding amount. '
+                                          'No interest or penalty shall be imposed under any circumstances.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '8. Discipline & Conduct\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'Repeated default may result in: Temporary or permanent disqualification from future BGP benefits. '
+                                          'Reporting to Mohallah committee for resolution. '
+                                          'Any false information provided shall result in immediate cancellation of the qardan.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '9. Documentation & Records\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'Applicant and guarantors must submit: Valid ID proof (as required by BGP). '
+                                          'Signatures/thumb impressions on the application form. BGP shall maintain records for internal accountability.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '10. Discretion of BGP\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'Approval or rejection of the qardan is at the sole discretion of BGP. '
+                                          'BGP reserves the right to modify the scheme rules with prior notice.\n\n',
+                                    ),
+                                    const TextSpan(
+                                      text: '11. Declaration\n',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: 'I hereby declare that all information provided by me is true and correct. '
+                                          'I understand that this amount is a Qardan Hasana, entrusted to me as an amanat, '
+                                          'and I take full moral and financial responsibility to repay it within the agreed time.',
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

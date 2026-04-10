@@ -14,6 +14,8 @@ class QardanHasanaApplication {
   final int captainMemberId;
   final String captainName;
   final String? captainMobile;
+  final bool captainApproved;
+  final String? captainApprovedAt;
   final int guarantorMemberId;
   final String guarantorName;
   final String? guarantorMobile;
@@ -29,6 +31,7 @@ class QardanHasanaApplication {
   final int? adminApprovedBy;
   final String? adminApprovedAt;
   final String? rejectionReason;
+  final bool termsAccepted;
   final String createdAt;
   final String updatedAt;
 
@@ -48,6 +51,8 @@ class QardanHasanaApplication {
     required this.captainMemberId,
     required this.captainName,
     this.captainMobile,
+    this.captainApproved = false,
+    this.captainApprovedAt,
     required this.guarantorMemberId,
     required this.guarantorName,
     this.guarantorMobile,
@@ -63,6 +68,7 @@ class QardanHasanaApplication {
     this.adminApprovedBy,
     this.adminApprovedAt,
     this.rejectionReason,
+    this.termsAccepted = true,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -84,6 +90,8 @@ class QardanHasanaApplication {
       captainMemberId: json['captainMemberId'] ?? 0,
       captainName: json['captainName'] ?? '',
       captainMobile: json['captainMobile'],
+      captainApproved: json['captainApproved'] == true || json['captainApproved'] == 1,
+      captainApprovedAt: json['captainApprovedAt'],
       guarantorMemberId: json['guarantorMemberId'] ?? 0,
       guarantorName: json['guarantorName'] ?? '',
       guarantorMobile: json['guarantorMobile'],
@@ -99,6 +107,7 @@ class QardanHasanaApplication {
       adminApprovedBy: json['adminApprovedBy'],
       adminApprovedAt: json['adminApprovedAt'],
       rejectionReason: json['rejectionReason'],
+      termsAccepted: json['termsAccepted'] == true || json['termsAccepted'] == 1,
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
     );
@@ -128,6 +137,8 @@ class QardanHasanaListItem {
   final double amountRequested;
   final double? sanctionedAmount;
   final String status;
+  final bool captainApproved;
+  final int captainMemberId;
   final String createdAt;
 
   QardanHasanaListItem({
@@ -138,6 +149,8 @@ class QardanHasanaListItem {
     required this.amountRequested,
     this.sanctionedAmount,
     required this.status,
+    this.captainApproved = false,
+    this.captainMemberId = 0,
     required this.createdAt,
   });
 
@@ -150,6 +163,8 @@ class QardanHasanaListItem {
       amountRequested: (json['amountRequested'] ?? 0).toDouble(),
       sanctionedAmount: json['sanctionedAmount']?.toDouble(),
       status: json['status'] ?? 'pending',
+      captainApproved: json['captainApproved'] == true || json['captainApproved'] == 1,
+      captainMemberId: json['captainMemberId'] ?? 0,
       createdAt: json['createdAt'] ?? '',
     );
   }

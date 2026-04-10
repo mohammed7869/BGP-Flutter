@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Data returned from the Bohra Calendar when used in picker mode.
@@ -23,7 +25,7 @@ class BohraCalendarScreen extends StatefulWidget {
 }
 
 class _BohraCalendarScreenState extends State<BohraCalendarScreen> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _isLoading = true;
   bool _showPickerPanel = false;
 
@@ -36,36 +38,40 @@ class _BohraCalendarScreenState extends State<BohraCalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (int progress) {
-            // Update loading bar.
-          },
-          onPageStarted: (String url) {
-            if (mounted) {
-              setState(() {
-                _isLoading = true;
-              });
-            }
-          },
-          onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          },
-          onWebResourceError: (WebResourceError error) {},
-          onNavigationRequest: (NavigationRequest request) {
-            // Allow all internal navigation.
-            return NavigationDecision.navigate;
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse('https://bohracalendar.com/'));
+    if (!kIsWeb) {
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(const Color(0x00000000))
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onProgress: (int progress) {
+              // Update loading bar.
+            },
+            onPageStarted: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = true;
+                });
+              }
+            },
+            onPageFinished: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            },
+            onWebResourceError: (WebResourceError error) {},
+            onNavigationRequest: (NavigationRequest request) {
+              // Allow all internal navigation.
+              return NavigationDecision.navigate;
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse('https://bohracalendar.com/'));
+    } else {
+      _isLoading = false;
+    }
   }
 
   @override
@@ -227,7 +233,44 @@ class _BohraCalendarScreenState extends State<BohraCalendarScreen> {
           Expanded(
             child: Stack(
               children: [
-                WebViewWidget(controller: _controller),
+                if (!kIsWeb && _controller != null)
+                  WebViewWidget(controller: _controller!),
+                if (kIsWeb)
+                  Center(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.public, size: 64, color: Color(0xFF8B6914)),
+                          const SizedBox(height: 16),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              'In-app calendar browsing is not fully supported on the web version.',
+                              style: TextStyle(fontSize: 16, color: Color(0xFF333333)),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final url = Uri.parse('https://bohracalendar.com/');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            icon: const Icon(Icons.open_in_new),
+                            label: const Text('Open Calendar in New Tab'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8B6914),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (_isLoading)
                   const Center(
                     child: CircularProgressIndicator(

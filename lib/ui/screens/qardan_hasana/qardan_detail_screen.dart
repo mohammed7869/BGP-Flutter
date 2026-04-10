@@ -2,10 +2,14 @@ import 'dart:io';
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/models/qardan_hasana_model.dart';
 import 'package:burhaniguardsapp/core/services/qardan_hasana_service.dart';
+import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class QardanDetailScreen extends StatefulWidget {
   final int applicationId;
@@ -19,15 +23,30 @@ class QardanDetailScreen extends StatefulWidget {
 
 class _QardanDetailScreenState extends State<QardanDetailScreen> {
   final QardanHasanaService _service = QardanHasanaService();
+  final LocalStorageService _localStorage = LocalStorageService();
   QardanHasanaApplication? _application;
   bool _isLoading = true;
   bool _isDownloading = false;
+  bool _isApproving = false;
+  bool _isCaptain = false;
+  int _currentUserId = 0;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     _loadApplication();
+  }
+
+  Future<void> _loadUserRole() async {
+    final userData = await _localStorage.getUserData();
+    if (userData != null && mounted) {
+      setState(() {
+        _isCaptain = userData.roles == 2;
+        _currentUserId = userData.id;
+      });
+    }
   }
 
   Future<void> _loadApplication() async {
@@ -47,27 +66,350 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
   }
 
   Future<void> _downloadPdf() async {
+    if (_application == null) return;
     setState(() => _isDownloading = true);
     try {
-      final bytes = await _service.downloadPdf(widget.applicationId);
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(
-          '${dir.path}/Qardan_Hasana_${_application?.applicationNo ?? widget.applicationId}.html');
-      await file.writeAsBytes(bytes);
+      final app = _application!;
+      final pdfDoc = pw.Document();
+
+      final labelStyle = pw.TextStyle(fontSize: 9, color: PdfColors.grey700);
+      final valueStyle = pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold);
+
+      String fmtDate(String? d) {
+        if (d == null) return '--';
+        try {
+          return DateFormat('dd MMM yyyy').format(DateTime.parse(d));
+        } catch (_) {
+          return d;
+        }
+      }
+
+      pw.Widget buildRow(String label, String value) {
+        return pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 2),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.SizedBox(
+                width: 140,
+                child: pw.Text(label, style: labelStyle),
+              ),
+              pw.Text(': ', style: labelStyle),
+              pw.Expanded(
+                child: pw.Text(value, style: valueStyle),
+              ),
+            ],
+          ),
+        );
+      }
+
+      pw.Widget buildSection(String title, List<pw.Widget> children) {
+        return pw.Container(
+          margin: const pw.EdgeInsets.only(bottom: 14),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#4A1C1C'),
+                  borderRadius: pw.BorderRadius.circular(4),
+                ),
+                child: pw.Text(title,
+                    style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white)),
+              ),
+              pw.SizedBox(height: 6),
+              ...children,
+            ],
+          ),
+        );
+      }
+
+      pdfDoc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(40),
+          header: (context) => pw.Column(
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('BURHANI GUARDS PUNE',
+                          style: pw.TextStyle(
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColor.fromHex('#4A1C1C'))),
+                      pw.Text('Qardan Hasana Application Form',
+                          style: pw.TextStyle(
+                              fontSize: 11, color: PdfColors.grey700)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(app.applicationNo,
+                          style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColor.fromHex('#4A1C1C'))),
+                      pw.Text('Date: ${fmtDate(app.createdAt)}',
+                          style: const pw.TextStyle(fontSize: 9)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              pw.Divider(thickness: 1.5, color: PdfColor.fromHex('#4A1C1C')),
+              pw.SizedBox(height: 10),
+            ],
+          ),
+          // footer: (context) => pw.Container(
+          //   alignment: pw.Alignment.center,
+          //   margin: const pw.EdgeInsets.only(top: 10),
+          //   child: pw.Text(
+          //     'Generated by Burhani Guards Pune - Qardan Hasana Module',
+          //     style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+          //   ),
+          // ),
+          build: (context) => [
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Expanded(
+                  child: buildSection('Applicant Details', [
+                    buildRow('Name (As Per Bank)', app.applicantName),
+                    buildRow('ITS No.', app.applicantItsId),
+                    buildRow('Mohallah', app.applicantJamaat),
+                    buildRow('Occupation', app.applicantOccupation ?? '--'),
+                    buildRow('Mobile', app.applicantMobile),
+                  ]),
+                ),
+                pw.SizedBox(width: 20),
+                pw.Container(
+                  width: 90,
+                  height: 110,
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey700),
+                  ),
+                  child: pw.Center(
+                    child: pw.Text("Applicant's\nPhoto", 
+                      textAlign: pw.TextAlign.center, 
+                      style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700))
+                  ),
+                ),
+              ],
+            ),
+
+            // Loan Details
+            buildSection('Qardan Hasana Details', [
+              buildRow('Amount Requested', 'Rs. ${app.amountRequested.toStringAsFixed(2)}'),
+              buildRow('Reason', app.reason ?? '--'),
+              if (app.sanctionedAmount != null)
+                buildRow('Sanctioned Amount', 'Rs. ${app.sanctionedAmount!.toStringAsFixed(2)}'),
+            ]),
+
+            // Guarantor 1: Captain
+            buildSection('Guarantor 1 - Captain', [
+              buildRow('Name', app.captainName),
+              buildRow('Mobile', app.captainMobile ?? '--'),
+            ]),
+
+            // Guarantor 2: Member
+            buildSection('Guarantor 2 - Member', [
+              buildRow('Name', app.guarantorName),
+              buildRow('Mobile', app.guarantorMobile ?? '--'),
+            ]),
+
+            // Terms
+            pw.SizedBox(height: 10),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Terms & Conditions',
+                      style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColor.fromHex('#4A1C1C'))),
+                  pw.SizedBox(height: 6),
+                  pw.Text(
+                    '1. Nature of Qardan: The amount given under this scheme is Qardan Hasana (interest-free), with maximum limit Rs. 20,000.\n'
+                    '2. Eligibility: Only registered BGP members are eligible to apply.\n'
+                    '3. Application: Applicant must provide personal details, reason, and two guarantors.\n'
+                    '4. Guarantors: Two guarantors required - Captain (Guarantor 1) and a BGP member (Guarantor 2).\n'
+                    '5. Default: In case of default, guarantors will be held responsible.\n'
+                    '6. Declaration: I declare all information is true and correct.',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                  pw.SizedBox(height: 8),
+                  // pw.Text(
+                  //   'Terms Accepted: ${app.termsAccepted ? "YES" : "NO"}',
+                  //   style: pw.TextStyle(
+                  //       fontSize: 9, fontWeight: pw.FontWeight.bold),
+                  // ),
+                ],
+              ),
+            ),
+
+            // Office Use Only
+            pw.SizedBox(height: 16),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Office Use Only',
+                      style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColor.fromHex('#4A1C1C'))),
+                  pw.SizedBox(height: 14),
+                  pw.Row(
+                    children: [
+                      pw.Text('Sanctioned Amount: Rs. ', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.Container(width: 150, height: 1, color: PdfColors.black),
+                    ]
+                  ),
+                  pw.SizedBox(height: 14),
+                  pw.Row(
+                    children: [
+                      pw.Text('Installment Amount: Rs. ', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.Container(width: 120, height: 1, color: PdfColors.black),
+                      pw.SizedBox(width: 10),
+                      pw.Text('X', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(width: 10),
+                      pw.Container(width: 60, height: 1, color: PdfColors.black),
+                      pw.SizedBox(width: 5),
+                      pw.Text('Months', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    ]
+                  ),
+                  pw.SizedBox(height: 14),
+                  pw.Row(
+                    children: [
+                      pw.Text('Installment Date: ', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.Container(width: 120, height: 1, color: PdfColors.black),
+                      pw.SizedBox(width: 10),
+                      pw.Text('To: ', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.Container(width: 120, height: 1, color: PdfColors.black),
+                    ]
+                  ),
+                  pw.SizedBox(height: 14),
+                  pw.Row(
+                    children: [
+                      pw.Text('Signature: ', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.Container(width: 150, height: 1, color: PdfColors.black),
+                    ]
+                  ),
+                ],
+              ),
+            ),
+
+            // Signature spaces
+            pw.SizedBox(height: 30),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  children: [
+                    pw.Container(width: 150, child: pw.Divider()),
+                    pw.Text('Applicant Signature',
+                        style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+                pw.Column(
+                  children: [
+                    pw.Container(width: 150, child: pw.Divider()),
+                    pw.Text('Captain Signature',
+                        style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+                pw.Column(
+                  children: [
+                    pw.Container(width: 150, child: pw.Divider()),
+                    pw.Text('Guarantor Signature',
+                        style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      final pdfBytes = await pdfDoc.save();
+      final fileName = 'Qardan_Hasana_${app.applicationNo}.pdf';
+
+      // Save to app documents directory (always works)
+      final appDir = await getApplicationDocumentsDirectory();
+      final appFile = File('${appDir.path}/$fileName');
+      await appFile.writeAsBytes(pdfBytes);
+
+      // Also save to public Downloads folder so it's visible in file manager
+      File downloadFile = appFile; // fallback
+      try {
+        final downloadsDir = Directory('/storage/emulated/0/Download');
+        if (await downloadsDir.exists()) {
+          downloadFile = File('${downloadsDir.path}/$fileName');
+          await downloadFile.writeAsBytes(pdfBytes);
+        }
+      } catch (_) {
+        // If saving to Downloads fails, we still have the app directory copy
+      }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Form downloaded successfully!'),
-            backgroundColor: AppColors.success,
-            action: SnackBarAction(
-              label: 'Share',
-              textColor: Colors.white,
-              onPressed: () {
-                Share.shareXFiles([XFile(file.path)],
-                    text: 'Qardan Hasana Application Form');
-              },
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
+                const SizedBox(width: 10),
+                const Expanded(child: Text('PDF Downloaded', style: TextStyle(fontSize: 17))),
+              ],
             ),
+            content: Text(
+              'Saved to Downloads folder:\n$fileName',
+              style: const TextStyle(fontSize: 13),
+            ),
+            actions: [
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  OpenFilex.open(downloadFile.path);
+                },
+                icon: const Icon(Icons.open_in_new_rounded),
+                label: const Text('Open'),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Share.shareXFiles([XFile(downloadFile.path)],
+                      text: 'Qardan Hasana Application Form');
+                },
+                icon: const Icon(Icons.share_rounded),
+                label: const Text('Share'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
+              ),
+            ],
           ),
         );
       }
@@ -82,6 +424,61 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  Future<void> _captainApprove() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Confirm Approval'),
+        content: const Text(
+          'Are you sure you want to approve this Qardan Hasana application as Captain?\n\n'
+          // 'By approving, you confirm that the applicant has collected your physical signature on the form.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Approve'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isApproving = true);
+    try {
+      await _service.captainApprove(widget.applicationId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Application approved successfully! Admins have been notified.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _loadApplication(); // Refresh
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
     }
   }
 
@@ -318,22 +715,96 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text('Guarantor 1 — Captain',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600)),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text('Guarantor 1 — Captain',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        const Spacer(),
+                        // Captain Approval Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: app.captainApproved
+                                ? AppColors.success.withOpacity(0.12)
+                                : AppColors.warning.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: app.captainApproved
+                                  ? AppColors.success.withOpacity(0.3)
+                                  : AppColors.warning.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                app.captainApproved
+                                    ? Icons.check_circle
+                                    : Icons.pending,
+                                size: 14,
+                                color: app.captainApproved
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                app.captainApproved ? 'Approved' : 'Pending',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: app.captainApproved
+                                      ? AppColors.success
+                                      : AppColors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     _buildDetailRow('Name', app.captainName),
                     _buildDetailRow('Mobile', app.captainMobile ?? '—'),
+                    // Captain Approve Button
+                    if (_isCaptain &&
+                        !app.captainApproved &&
+                        app.captainMemberId == _currentUserId) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isApproving ? null : _captainApprove,
+                          icon: _isApproving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.check_circle_outline, size: 18),
+                          label: Text(
+                              _isApproving ? 'Approving...' : 'Approve as Captain'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

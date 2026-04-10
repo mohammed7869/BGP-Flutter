@@ -433,7 +433,7 @@ class _HierarchyScreenState extends State<HierarchyScreen>
     required List<Map<String, dynamic>> members,
     bool isLast = false,
   }) {
-    final rankText = MemberRank.getRankText(rankId);
+    final rankText = rankId == MemberRank.resourceAdmin ? 'Jamiat Admin' : MemberRank.getRankText(rankId);
     final rankColor = _getRankColor(rankId);
 
     // If only 1 member, show single card
