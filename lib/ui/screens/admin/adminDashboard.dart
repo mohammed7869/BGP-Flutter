@@ -13,6 +13,7 @@ import 'package:burhaniguardsapp/ui/widgets/adminAppBar.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppDrawer.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminBottomNavigationBar.dart';
 import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
+import 'package:burhaniguardsapp/ui/widgets/survey_popup.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -91,6 +92,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
     _loadMemberMiqaats();
     _loadUserRoleAndCounts();
+
+    // Show survey popup after the first frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          debugPrint('[Survey] Checking survey popup...');
+          SurveyPopup.showIfNeeded(context);
+        }
+      });
+    });
   }
 
   Future<void> _loadUserRoleAndCounts() async {
@@ -652,7 +663,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         dateRange: _formatDateRange(miqaat.fromDate, miqaat.tillDate, miqaat.miqaatDays),
                         location: miqaat.isInternational
                             ? 'International Miqaat'
-                            : '${miqaat.jamaat}, ${miqaat.jamiyat}',
+                            : miqaat.isMultiJamaatLocal
+                                ? 'Admin Local Miqaat (Multi-Jamaat)'
+                                : '${miqaat.jamaat}, ${miqaat.jamiyat}',
                       ),
                     ),
                   );
@@ -702,16 +715,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             ? const Color(0xFFE8F5E9)
             : miqaat.isInternational
                 ? AppColors.internationalGoldLight
-                : Colors.white,
+                : miqaat.isMultiJamaatLocal
+                    ? const Color(0xFFE0F2F1)
+                    : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: miqaat.isInternational
             ? Border.all(color: AppColors.internationalGold, width: 1.5)
-            : Border.all(color: Colors.grey.withOpacity(0.10), width: 1),
+            : miqaat.isMultiJamaatLocal
+                ? Border.all(color: const Color(0xFF00897B).withOpacity(0.5), width: 1.5)
+                : Border.all(color: Colors.grey.withOpacity(0.10), width: 1),
         boxShadow: [
           BoxShadow(
             color: miqaat.isInternational
                 ? AppColors.internationalGold.withOpacity(0.20)
-                : Colors.black.withOpacity(0.06),
+                : miqaat.isMultiJamaatLocal
+                    ? const Color(0xFF00897B).withOpacity(0.15)
+                    : Colors.black.withOpacity(0.06),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -787,8 +806,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         ),
                       ),
                     ],
-                    if (!miqaat.isInternational) const SizedBox(width: 6),
-                    if (miqaat.isInternational) const SizedBox(width: 6),
+                    if (miqaat.isMultiJamaatLocal) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                              colors: [Color(0xFF00897B), Color(0xFF26A69A)]),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '📍 Admin',
+                          style: GoogleFonts.poppins(
+                            fontSize: 8,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (!miqaat.isInternational && !miqaat.isMultiJamaatLocal) const SizedBox(width: 6),
+                    if (miqaat.isInternational || miqaat.isMultiJamaatLocal) const SizedBox(width: 6),
                     _buildStatusIcon(miqaat),
                   ],
                 ),
@@ -831,7 +873,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   ? const LinearGradient(
                       colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
                     )
-                  : AppColors.primaryGradient,
+                  : miqaat.isMultiJamaatLocal
+                      ? const LinearGradient(
+                          colors: [Color(0xFF00897B), Color(0xFF26A69A)],
+                        )
+                      : AppColors.primaryGradient,
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(20),
@@ -1184,8 +1230,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                         ),
                                     ],
                                   ),
-                                  // Admin status row for International miqaats
-                                  if (miqaat.isInternational && isCaptainFinalized && day.finalStatus == 'Approved') ...[
+                                  // Admin status row for International / multi-jamaat Local miqaats
+                                  if ((miqaat.isInternational || miqaat.isMultiJamaatLocal) && isCaptainFinalized && day.finalStatus == 'Approved') ...[
                                     const SizedBox(height: 6),
                                     Row(
                                       children: [

@@ -1199,9 +1199,9 @@ class _MembersListScreenState extends State<MembersListScreen> {
                                       ],
                                     ),
                                   ],
-                                  // Admin status row for International miqaats (only when captain approved)
+                                  // Admin status row for International / multi-jamaat Local miqaats (only when captain approved)
                                   if (widget.miqaat != null &&
-                                      widget.miqaat!.isInternational &&
+                                      (widget.miqaat!.isInternational || widget.miqaat!.isMultiJamaatLocal) &&
                                       isCaptainFinalized &&
                                       day.finalStatus == 'Approved') ...[
                                     const SizedBox(height: 6),

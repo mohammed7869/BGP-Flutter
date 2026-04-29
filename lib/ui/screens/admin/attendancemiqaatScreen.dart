@@ -418,12 +418,14 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
         if (user.roles == 2 &&
             miqaat.adminApproval.toLowerCase() == 'approved') {
           // For International miqaats, captains cannot mark attendance
-          if (miqaat.isInternational) {
+          if (miqaat.isInternational || miqaat.isMultiJamaatLocal) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Attendance for International miqaats is managed by Admin from the Admin Panel'),
-                backgroundColor: Color(0xFFB8860B),
-                duration: Duration(seconds: 3),
+              SnackBar(
+                content: Text(miqaat.isInternational
+                    ? 'Attendance for International miqaats is managed by Admin from the Admin Panel'
+                    : 'Attendance for Admin-created multi-jamaat miqaats is managed by Admin from the Admin Panel'),
+                backgroundColor: miqaat.isInternational ? const Color(0xFFB8860B) : const Color(0xFF00897B),
+                duration: const Duration(seconds: 3),
               ),
             );
             return;
@@ -454,19 +456,25 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
         decoration: BoxDecoration(
           color: miqaat.isInternational
               ? AppColors.internationalGoldLight
-              : Colors.white,
+              : miqaat.isMultiJamaatLocal
+                  ? const Color(0xFFE0F2F1)
+                  : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: miqaat.isInternational
                 ? AppColors.internationalGold.withOpacity(0.5)
-                : Colors.grey.withOpacity(0.1),
-            width: miqaat.isInternational ? 1.5 : 1,
+                : miqaat.isMultiJamaatLocal
+                    ? const Color(0xFF00897B).withOpacity(0.4)
+                    : Colors.grey.withOpacity(0.1),
+            width: (miqaat.isInternational || miqaat.isMultiJamaatLocal) ? 1.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: miqaat.isInternational
                   ? AppColors.internationalGold.withOpacity(0.15)
-                  : Colors.black.withOpacity(0.05),
+                  : miqaat.isMultiJamaatLocal
+                      ? const Color(0xFF00897B).withOpacity(0.12)
+                      : Colors.black.withOpacity(0.05),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -531,6 +539,26 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
                           ),
                         ),
                       ],
+                      if (miqaat.isMultiJamaatLocal) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                                colors: [Color(0xFF00897B), Color(0xFF26A69A)]),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '📍 Admin',
+                            style: GoogleFonts.poppins(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                       if (_isCaptain) ...[
                         const SizedBox(width: 8),
                         Container(
@@ -577,26 +605,34 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
                       Icon(
                         miqaat.isInternational
                             ? Icons.public
-                            : Icons.location_on_outlined,
+                            : miqaat.isMultiJamaatLocal
+                                ? Icons.location_on_rounded
+                                : Icons.location_on_outlined,
                         size: 15,
                         color: miqaat.isInternational
                             ? AppColors.internationalGoldDark
-                            : AppColors.textSecondary,
+                            : miqaat.isMultiJamaatLocal
+                                ? const Color(0xFF00695C)
+                                : AppColors.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           miqaat.isInternational
                               ? 'International Miqaat'
-                              : _isCaptain
-                                  ? '${miqaat.jamaat} (${miqaat.jamiyat})'
-                                  : miqaat.jamaat,
+                              : miqaat.isMultiJamaatLocal
+                                  ? 'Admin Local Miqaat (Multi-Jamaat)'
+                                  : _isCaptain
+                                      ? '${miqaat.jamaat} (${miqaat.jamiyat})'
+                                      : miqaat.jamaat,
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: miqaat.isInternational
                                 ? AppColors.internationalGoldDark
-                                : AppColors.textSecondary,
-                            fontWeight: miqaat.isInternational
+                                : miqaat.isMultiJamaatLocal
+                                    ? const Color(0xFF00695C)
+                                    : AppColors.textSecondary,
+                            fontWeight: (miqaat.isInternational || miqaat.isMultiJamaatLocal)
                                 ? FontWeight.w600
                                 : FontWeight.w400,
                           ),
@@ -650,7 +686,10 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
                 gradient: miqaat.isInternational
                     ? const LinearGradient(
                         colors: [Color(0xFFB8860B), Color(0xFFDAA520)])
-                    : AppColors.primaryGradient,
+                    : miqaat.isMultiJamaatLocal
+                        ? const LinearGradient(
+                            colors: [Color(0xFF00897B), Color(0xFF26A69A)])
+                        : AppColors.primaryGradient,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(18),
                   bottomRight: Radius.circular(18),

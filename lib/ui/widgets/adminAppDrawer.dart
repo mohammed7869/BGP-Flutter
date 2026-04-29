@@ -8,6 +8,8 @@ import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 // import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/survey/survey_form_screen.dart';
+import 'package:burhaniguardsapp/ui/widgets/survey_popup.dart';
 import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,13 +24,21 @@ class AdminAppDrawer extends StatefulWidget {
 class _AdminAppDrawerState extends State<AdminAppDrawer> {
   String? _userName;
   String? _userItsId;
+  String? _userJamaat;
   bool _isLoading = true;
   final AuthService _authService = AuthService();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -37,6 +47,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
     setState(() {
       _userName = userData?.fullName ?? 'User';
       _userItsId = userData?.itsId;
+      _userJamaat = userData?.jamaat;
       _isLoading = false;
     });
   }
@@ -108,110 +119,116 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                 decoration: const BoxDecoration(
                   color: Colors.white,
                 ),
-                child: ListView(
-                  padding: const EdgeInsets.only(top: 20),
-                  children: [
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.home,
-                      title: 'Home',
-                      isSelected: true,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const AdminDashboardScreen()),
-                        );
-                      },
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.account_tree_rounded,
-                      title: 'Hierarchy',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const HierarchyScreen()),
-                        );
-                      },
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.person,
-                      title: 'Profile',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const UserProfileScreen()),
-                        );
-                      },
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon:Icons.dry_cleaning,
-                      title: 'Uniform',
-                      onTap: () async {
-                        Navigator.pop(context);
-                        final Uri url =
-                            Uri.parse('https://forms.gle/SxZUJQ1zp7EfoPiZ6');
-                        if (!await launchUrl(url,
-                            mode: LaunchMode.externalApplication)) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Could not launch Uniform URL')),
-                            );
+                child: Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  thickness: 4,
+                  radius: const Radius.circular(10),
+                  child: ListView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.only(top: 20, bottom: 20),
+                    children: [
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.home,
+                        title: 'Home',
+                        isSelected: true,
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const AdminDashboardScreen()),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.account_tree_rounded,
+                        title: 'Hierarchy',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const HierarchyScreen()),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.person,
+                        title: 'Profile',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const UserProfileScreen()),
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.dry_cleaning,
+                        title: 'Uniform',
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final Uri url =
+                              Uri.parse('https://forms.gle/SxZUJQ1zp7EfoPiZ6');
+                          if (!await launchUrl(url,
+                              mode: LaunchMode.externalApplication)) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Could not launch Uniform URL')),
+                              );
+                            }
                           }
-                        }
-                      },
-                    ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.public,
-                      title: 'BGI',
-                      onTap: () async {
-                        Navigator.pop(context);
-                        final Uri url =
-                            Uri.parse('https://app.burhaniguards.org/dashboard');
-                        if (!await launchUrl(url,
-                            mode: LaunchMode.externalApplication)) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Could not launch BGI URL')),
-                            );
+                        },
+                      ),
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.public,
+                        title: 'BGI',
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final Uri url =
+                              Uri.parse('https://app.burhaniguards.org/dashboard');
+                          if (!await launchUrl(url,
+                              mode: LaunchMode.externalApplication)) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Could not launch BGI URL')),
+                              );
+                            }
                           }
-                        }
-                      },
-                    ),
-                    // _buildMenuItem(
-                    //   context,
-                    //   icon: Icons.event_available,
-                    //   title: 'Enrolled Events',
-                    //   onTap: () {
-                    //     Navigator.pop(context);
-                    //     // TODO: Navigate to Enrolled Events screen when implemented
-                    //   },
-                    // ),
-                    // _buildMenuItem(
-                    //   context,
-                    //   icon: Icons.bookmark,
-                    //   title: 'Saved Events',
-                    //   onTap: () {
-                    //     Navigator.pop(context);
-                    //     Navigator.pushReplacement(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //           builder: (_) => const EnrolledMiqaatScreen()),
-                    //     );
-                    //   },
-                    // ),
-                  ],
+                        },
+                      ),
+                      // Only show Survey for eligible jamaats (not BARAMATI/AHMEDNAGAR)
+                      if (!['BARAMATI', 'AHMEDNAGAR'].contains(
+                          (_userJamaat ?? '').toUpperCase().trim()))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.assignment_rounded,
+                          title: 'Survey',
+                          onTap: () async {
+                            Navigator.pop(context);
+                            final shown =
+                                await SurveyPopup.showIfNeeded(context);
+                            if (!shown && context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const SurveyFormScreen(
+                                        isPreview: true)),
+                              );
+                            }
+                          },
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -231,6 +248,8 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                         color: AppColors.primary,
                         size: 22,
                       ),
+                      minLeadingWidth: 0,
+                      horizontalTitleGap: 12,
                       title: Text(
                         'Reset Password',
                         style: TextStyle(
@@ -251,6 +270,8 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                         color: Colors.red,
                         size: 22,
                       ),
+                      minLeadingWidth: 0,
+                      horizontalTitleGap: 12,
                       title: const Text(
                         'Log Out',
                         style: TextStyle(
@@ -293,6 +314,8 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
           color: AppColors.primaryDark,
           size: 22,
         ),
+        minLeadingWidth: 0,
+        horizontalTitleGap: 12,
         title: Text(
           title,
           style: TextStyle(
@@ -302,7 +325,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
           ),
         ),
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
   }

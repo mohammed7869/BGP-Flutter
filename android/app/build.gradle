@@ -16,7 +16,7 @@ android {
     namespace = "com.burhaniguards.pune.app"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

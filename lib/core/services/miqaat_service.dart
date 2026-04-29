@@ -922,6 +922,7 @@ class Miqaat {
   final String? notes;
   final List<String>? khidmatDone;
   final bool isReportSubmitted;
+  final bool isAdminCreated;
 
   Miqaat({
     required this.id,
@@ -945,9 +946,11 @@ class Miqaat {
     this.notes,
     this.khidmatDone,
     this.isReportSubmitted = false,
+    this.isAdminCreated = false,
   });
 
   bool get isInternational => miqaatType == 'International';
+  bool get isMultiJamaatLocal => miqaatType == 'Local' && isAdminCreated;
 
   factory Miqaat.fromJson(Map<String, dynamic> json) {
     final from = DateTime.parse(json['fromDate'] as String);
@@ -996,6 +999,7 @@ class Miqaat {
       notes: json['notes'] as String?,
       khidmatDone: khidmatList,
       isReportSubmitted: json['isReportSubmitted'] as bool? ?? false,
+      isAdminCreated: json['isAdminCreated'] as bool? ?? false,
     );
   }
 
