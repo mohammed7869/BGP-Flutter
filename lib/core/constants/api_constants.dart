@@ -4,8 +4,8 @@ class ApiConstants {
   static const String baseUrl = 'https://bgp.baawanerp.com'; //Live URL
   // static const String baseUrl = 'http://192.168.141.207:5000';
   // static const String baseUrl = 'http://192.168.31.97:5000'; //Local URL
-  // static const String baseUrl = 'http://192.168.24.111:5000'; //Local URL
-  // static const String baseUrl = 'http://10.22.32.100:5000'; //Local URL
+  // static const String baseUrl = 'http://192.168.1.5:5000'; //Local URL
+  // static const String baseUrl = 'http://10.116.213.110:5000'; //Local URL
   // static const String baseUrl = 'http://192.168.71.203:5000'; //Local URL
   // API Endpoints - Unified users table
   static const String login = '/api/1/login';
@@ -32,6 +32,11 @@ class ApiConstants {
   static const String getMembersByJamaat = '/api/1/users/jamaat';
   static const String getHierarchyMembers = '/api/1/users/hierarchy';
   static const String getMemberEnrollmentDays = '/api/1/miqaat';
+
+  // API Endpoints - Survey
+  static const String submitSurvey = '/api/1/survey';
+  static const String hasSubmittedSurvey = '/api/1/survey/has-submitted';
+  static const String mySurvey = '/api/1/survey/my-survey';
 
   // Image URLs
   static String get miqaatImagesBaseUrl => '$baseUrl/bgp_uploads/miqaat_images';
