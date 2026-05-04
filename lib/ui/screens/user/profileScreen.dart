@@ -567,31 +567,77 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _goldAccent.withOpacity(0.25),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                        color: _goldShimmer.withOpacity(0.5)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.military_tech,
-                                          size: 14, color: _goldShimmer),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _userData!.rank,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _goldShimmer,
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: _goldAccent.withOpacity(0.25),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                            color: _goldShimmer.withOpacity(0.5)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.military_tech,
+                                              size: 14, color: _goldShimmer),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _userData!.rank,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: _goldShimmer,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Badge chip (BGI / BGP)
+                                    if (_userData!.badge != null && _userData!.badge!.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: _userData!.badge == 'BGP'
+                                              ? const Color(0xFF3D6B4F).withOpacity(0.35)
+                                              : const Color(0xFF7B3F3F).withOpacity(0.35),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: _userData!.badge == 'BGP'
+                                                ? const Color(0xFF8FBC8F).withOpacity(0.6)
+                                                : _goldShimmer.withOpacity(0.5),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.star_rounded,
+                                              size: 14,
+                                              color: _userData!.badge == 'BGP'
+                                                  ? const Color(0xFFA8D5A2)
+                                                  : _goldShimmer,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _userData!.badge!,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: _userData!.badge == 'BGP'
+                                                    ? const Color(0xFFA8D5A2)
+                                                    : _goldShimmer,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -899,6 +945,72 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     icon: Icons.calendar_today_outlined,
                     label: 'Age',
                     value: _calculateAge(_userData!.dateOfBirth)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Row 4 - Badge
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: (_userData!.badge == 'BGP'
+                            ? const Color(0xFF3D6B4F)
+                            : _brandDark)
+                        .withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: (_userData!.badge == 'BGP'
+                              ? const Color(0xFF3D6B4F)
+                              : _brandDark)
+                          .withOpacity(0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.star_rounded,
+                        size: 18,
+                        color: _userData!.badge == 'BGP'
+                            ? const Color(0xFF3D6B4F)
+                            : _brandDark,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Text(
+                            //   '',
+                            //   style: TextStyle(
+                            //     fontSize: 10,
+                            //     fontWeight: FontWeight.w600,
+                            //     color: _textMuted,
+                            //     letterSpacing: 0.4,
+                            //   ),
+                            // ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _userData!.badge == 'BGP'
+                                  ? 'BGP \u2013 Burhani Guards Pune'
+                                  : 'BGI \u2013 Burhani Guards International',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _userData!.badge == 'BGP'
+                                    ? const Color(0xFF3D6B4F)
+                                    : _brandDark,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

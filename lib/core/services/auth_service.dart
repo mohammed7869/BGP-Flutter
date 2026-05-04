@@ -211,6 +211,7 @@ class AuthService {
           contact: jsonResponse['contact']?.toString() ?? userData.contact,
           dateOfBirth:
               jsonResponse['dateOfBirth']?.toString() ?? userData.dateOfBirth,
+          badge: jsonResponse['badge']?.toString() ?? userData.badge,
           role: userData.role,
         );
 
@@ -280,6 +281,7 @@ class AuthService {
             age: userData.age,
             contact: contact ?? userData.contact,
             dateOfBirth: dateOfBirth ?? userData.dateOfBirth,
+            badge: userData.badge,
             role: userData.role,
           );
           await _localStorage.saveUserData(updatedUserData);
