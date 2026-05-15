@@ -195,7 +195,6 @@ class _HierarchyScreenState extends State<HierarchyScreen>
   static const _rankOrder = [
     MemberRank.assistantCommander,
     MemberRank.majorCaptain,
-    MemberRank.resourceAdmin,
     MemberRank.captain,
     MemberRank.viceCaptain,
     MemberRank.groupLeader,

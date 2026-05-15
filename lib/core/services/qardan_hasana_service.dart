@@ -343,6 +343,60 @@ class QardanHasanaService {
     }
   }
 
+  /// Update an existing Qardan Hasana application (before captain approval)
+  Future<QardanHasanaApplication> updateApplication({
+    required int applicationId,
+    required String applicantName,
+    required String applicantOccupation,
+    required String applicantMobile,
+    String? reason,
+    required double amountRequested,
+    required int guarantorMemberId,
+  }) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) throw Exception('User not authenticated');
+
+      final url = Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint/$applicationId/edit');
+
+      final requestBody = {
+        'applicantName': applicantName,
+        'applicantOccupation': applicantOccupation,
+        'applicantMobile': applicantMobile,
+        'reason': reason,
+        'amountRequested': amountRequested,
+        'guarantorMemberId': guarantorMemberId,
+      };
+
+      final response = await http
+          .put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(requestBody),
+      )
+          .timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+        return QardanHasanaApplication.fromJson(jsonResponse);
+      } else {
+        _handleErrorResponse(response, 'Failed to update application');
+        throw Exception('Failed to update application');
+      }
+    } catch (e) {
+      _handleConnectionError(e);
+      rethrow;
+    }
+  }
+
   /// Download PDF of the application form
   Future<List<int>> downloadPdf(int id) async {
     try {

@@ -132,6 +132,7 @@ class QardanHasanaApplication {
 class QardanHasanaListItem {
   final int id;
   final String applicationNo;
+  final int applicantMemberId;
   final String applicantName;
   final String applicantJamaat;
   final double amountRequested;
@@ -144,6 +145,7 @@ class QardanHasanaListItem {
   QardanHasanaListItem({
     required this.id,
     required this.applicationNo,
+    required this.applicantMemberId,
     required this.applicantName,
     required this.applicantJamaat,
     required this.amountRequested,
@@ -158,6 +160,7 @@ class QardanHasanaListItem {
     return QardanHasanaListItem(
       id: json['id'] ?? 0,
       applicationNo: json['applicationNo'] ?? '',
+      applicantMemberId: json['applicantMemberId'] ?? 0,
       applicantName: json['applicantName'] ?? '',
       applicantJamaat: json['applicantJamaat'] ?? '',
       amountRequested: (json['amountRequested'] ?? 0).toDouble(),

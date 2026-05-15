@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:burhaniguardsapp/ui/screens/qardan_hasana/qardan_edit_screen.dart';
 
 class QardanDetailScreen extends StatefulWidget {
   final int applicationId;
@@ -681,6 +682,104 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
           ),
           const SizedBox(height: 20),
 
+          // ── PROGRESS BAR ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: AppColors.cardShadow,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Application Progress',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    // Step 1: Submitted (always complete)
+                    _buildProgressStep(
+                      icon: Icons.check_circle,
+                      label: 'Submitted',
+                      date: _formatShortDate(app.createdAt),
+                      isComplete: true,
+                      isActive: false,
+                      isRejected: false,
+                    ),
+                    // Connector 1
+                    Expanded(
+                      child: Container(
+                        height: 3,
+                        margin: const EdgeInsets.only(bottom: 28),
+                        decoration: BoxDecoration(
+                          color: app.captainApproved
+                              ? AppColors.success
+                              : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    // Step 2: Captain Approval
+                    _buildProgressStep(
+                      icon: app.captainApproved
+                          ? Icons.check_circle
+                          : Icons.schedule,
+                      label: app.captainApproved
+                          ? 'Captain\nApproved'
+                          : 'Awaiting\nCaptain',
+                      date: app.captainApprovedAt != null
+                          ? _formatShortDate(app.captainApprovedAt)
+                          : 'Pending',
+                      isComplete: app.captainApproved,
+                      isActive: !app.captainApproved,
+                      isRejected: false,
+                    ),
+                    // Connector 2
+                    Expanded(
+                      child: Container(
+                        height: 3,
+                        margin: const EdgeInsets.only(bottom: 28),
+                        decoration: BoxDecoration(
+                          color: app.status == 'sanctioned'
+                              ? AppColors.success
+                              : app.status == 'rejected'
+                                  ? AppColors.error
+                                  : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    // Step 3: Admin Decision
+                    _buildProgressStep(
+                      icon: app.status == 'sanctioned'
+                          ? Icons.check_circle
+                          : app.status == 'rejected'
+                              ? Icons.cancel
+                              : Icons.schedule,
+                      label: app.status == 'sanctioned'
+                          ? 'Sanctioned'
+                          : app.status == 'rejected'
+                              ? 'Rejected'
+                              : 'Admin\nDecision',
+                      date: app.adminApprovedAt != null
+                          ? _formatShortDate(app.adminApprovedAt)
+                          : 'Pending',
+                      isComplete: app.status == 'sanctioned',
+                      isActive: app.status == 'pending' && app.captainApproved,
+                      isRejected: app.status == 'rejected',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // ── APPLICANT INFORMATION ──
           _buildSectionCard(
             'Applicant Information',
@@ -903,6 +1002,43 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
             const SizedBox(height: 16),
           ],
 
+          // ── EDIT BUTTON (for applicant OR assigned captain, before captain approval) ──
+          if (!app.captainApproved &&
+              app.status == 'pending' &&
+              (app.applicantMemberId == _currentUserId ||
+                  (_isCaptain && app.captainMemberId == _currentUserId))) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          QardanEditScreen(application: app),
+                    ),
+                  );
+                  if (result == true) {
+                    _loadApplication(); // Refresh data after edit
+                  }
+                },
+                icon: const Icon(Icons.edit_rounded, size: 20),
+                label: const Text('Edit Application',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // ── DOWNLOAD BUTTON ──
           SizedBox(
             width: double.infinity,
@@ -987,6 +1123,73 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProgressStep({
+    required IconData icon,
+    required String label,
+    required String date,
+    required bool isComplete,
+    required bool isActive,
+    required bool isRejected,
+  }) {
+    Color circleColor;
+    Color iconColor;
+    Color textColor;
+
+    if (isRejected) {
+      circleColor = AppColors.error.withOpacity(0.12);
+      iconColor = AppColors.error;
+      textColor = AppColors.error;
+    } else if (isComplete) {
+      circleColor = AppColors.success.withOpacity(0.12);
+      iconColor = AppColors.success;
+      textColor = AppColors.success;
+    } else if (isActive) {
+      circleColor = AppColors.warning.withOpacity(0.12);
+      iconColor = AppColors.warning;
+      textColor = AppColors.warning;
+    } else {
+      circleColor = Colors.grey.shade100;
+      iconColor = Colors.grey.shade400;
+      textColor = Colors.grey.shade400;
+    }
+
+    return Column(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: circleColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isRejected
+                  ? AppColors.error.withOpacity(0.3)
+                  : isComplete
+                      ? AppColors.success.withOpacity(0.3)
+                      : isActive
+                          ? AppColors.warning.withOpacity(0.3)
+                          : Colors.grey.shade200,
+              width: 2,
+            ),
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(height: 6),
+        Text(label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+                height: 1.2)),
+        const SizedBox(height: 2),
+        Text(date,
+            style: TextStyle(
+                fontSize: 9, color: Colors.grey.shade500)),
+      ],
     );
   }
 }
