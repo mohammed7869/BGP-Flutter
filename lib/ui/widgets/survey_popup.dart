@@ -19,54 +19,62 @@ class SurveyPopup {
 
   /// Shows survey popup if user hasn't submitted yet.
   /// Returns true if popup was shown, false otherwise.
+  /// 
+  /// NOTE: Khidmat Survey for Ashara Mubaraka Poona 1448 has been stopped.
+  /// Survey form is disabled and no longer accessible from the mobile app.
   static Future<bool> showIfNeeded(BuildContext context) async {
-    try {
-      // Check jamaat eligibility first
-      final eligible = await isJamaatEligible();
-      if (!eligible) {
-        debugPrint('[Survey] User jamaat excluded, skipping popup.');
-        return false;
-      }
+    // Survey has been stopped – do not show popup to any user
+    debugPrint('[Survey] Survey has been stopped. Popup disabled.');
+    return false;
 
-      final surveyService = SurveyService();
-      debugPrint('[Survey] Calling hasSubmitted API...');
-      final hasSubmitted = await surveyService.hasSubmitted();
-      debugPrint('[Survey] hasSubmitted result: $hasSubmitted');
-
-      if (hasSubmitted) {
-        debugPrint('[Survey] User already submitted, skipping popup.');
-        return false;
-      }
-
-      if (!context.mounted) {
-        debugPrint('[Survey] Context not mounted, skipping popup.');
-        return false;
-      }
-
-      debugPrint('[Survey] Showing popup dialog...');
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.black54,
-        builder: (dialogContext) => _SurveyPopupDialog(),
-      );
-
-      return true;
-    } catch (e) {
-      debugPrint('[Survey] Error: $e');
-      // Even on error, show the popup (can't confirm if submitted)
-      if (context.mounted) {
-        debugPrint('[Survey] Showing popup despite error...');
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          barrierColor: Colors.black54,
-          builder: (dialogContext) => _SurveyPopupDialog(),
-        );
-        return true;
-      }
-      return false;
-    }
+    // --- Original survey popup logic (disabled) ---
+    // try {
+    //   // Check jamaat eligibility first
+    //   final eligible = await isJamaatEligible();
+    //   if (!eligible) {
+    //     debugPrint('[Survey] User jamaat excluded, skipping popup.');
+    //     return false;
+    //   }
+    //
+    //   final surveyService = SurveyService();
+    //   debugPrint('[Survey] Calling hasSubmitted API...');
+    //   final hasSubmitted = await surveyService.hasSubmitted();
+    //   debugPrint('[Survey] hasSubmitted result: $hasSubmitted');
+    //
+    //   if (hasSubmitted) {
+    //     debugPrint('[Survey] User already submitted, skipping popup.');
+    //     return false;
+    //   }
+    //
+    //   if (!context.mounted) {
+    //     debugPrint('[Survey] Context not mounted, skipping popup.');
+    //     return false;
+    //   }
+    //
+    //   debugPrint('[Survey] Showing popup dialog...');
+    //   await showDialog(
+    //     context: context,
+    //     barrierDismissible: false,
+    //     barrierColor: Colors.black54,
+    //     builder: (dialogContext) => _SurveyPopupDialog(),
+    //   );
+    //
+    //   return true;
+    // } catch (e) {
+    //   debugPrint('[Survey] Error: $e');
+    //   // Even on error, show the popup (can't confirm if submitted)
+    //   if (context.mounted) {
+    //     debugPrint('[Survey] Showing popup despite error...');
+    //     await showDialog(
+    //       context: context,
+    //       barrierDismissible: false,
+    //       barrierColor: Colors.black54,
+    //       builder: (dialogContext) => _SurveyPopupDialog(),
+    //     );
+    //     return true;
+    //   }
+    //   return false;
+    // }
   }
 }
 

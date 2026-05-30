@@ -93,15 +93,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     _loadMemberMiqaats();
     _loadUserRoleAndCounts();
 
-    // Show survey popup after the first frame is rendered
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          debugPrint('[Survey] Checking survey popup...');
-          SurveyPopup.showIfNeeded(context);
-        }
-      });
-    });
+    // --- Khidmat Survey has been stopped (Ashara Mubaraka Poona 1448) ---
+    // Survey popup disabled on dashboard load
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   Future.delayed(const Duration(milliseconds: 800), () {
+    //     if (mounted) {
+    //       debugPrint('[Survey] Checking survey popup...');
+    //       SurveyPopup.showIfNeeded(context);
+    //     }
+    //   });
+    // });
   }
 
   Future<void> _loadUserRoleAndCounts() async {

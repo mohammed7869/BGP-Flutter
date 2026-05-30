@@ -206,27 +206,28 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                           }
                         },
                       ),
-                      // Only show Survey for eligible jamaats (not BARAMATI/AHMEDNAGAR)
-                      if (!['BARAMATI', 'AHMEDNAGAR'].contains(
-                          (_userJamaat ?? '').toUpperCase().trim()))
-                        _buildMenuItem(
-                          context,
-                          icon: Icons.assignment_rounded,
-                          title: 'Survey',
-                          onTap: () async {
-                            Navigator.pop(context);
-                            final shown =
-                                await SurveyPopup.showIfNeeded(context);
-                            if (!shown && context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const SurveyFormScreen(
-                                        isPreview: true)),
-                              );
-                            }
-                          },
-                        ),
+                      // --- Khidmat Survey has been stopped (Ashara Mubaraka Poona 1448) ---
+                      // Survey menu item hidden from sidebar
+                      // if (!['BARAMATI', 'AHMEDNAGAR'].contains(
+                      //     (_userJamaat ?? '').toUpperCase().trim()))
+                      //   _buildMenuItem(
+                      //     context,
+                      //     icon: Icons.assignment_rounded,
+                      //     title: 'Survey',
+                      //     onTap: () async {
+                      //       Navigator.pop(context);
+                      //       final shown =
+                      //           await SurveyPopup.showIfNeeded(context);
+                      //       if (!shown && context.mounted) {
+                      //         Navigator.push(
+                      //           context,
+                      //           MaterialPageRoute(
+                      //               builder: (_) => const SurveyFormScreen(
+                      //                   isPreview: true)),
+                      //         );
+                      //       }
+                      //     },
+                      //   ),
                     ],
                   ),
                 ),
