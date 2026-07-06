@@ -57,13 +57,8 @@ class _QardanListScreenState extends State<QardanListScreen> {
     });
 
     try {
-      // Captain sees jamaat applications (includes their own) via main endpoint
-      // Member sees own applications via my-applications endpoint
-      if (_isCaptain) {
-        _applications = await _service.getAllApplications();
-      } else {
-        _applications = await _service.getMyApplications();
-      }
+      // All users now see the main endpoint (which returns own + guarantor apps for members)
+      _applications = await _service.getAllApplications();
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() {
@@ -166,14 +161,14 @@ class _QardanListScreenState extends State<QardanListScreen> {
     }
   }
 
-  Future<void> _captainApprove(QardanHasanaListItem app) async {
+  Future<void> _guarantorApprove(QardanHasanaListItem app) async {
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Approve Application'),
         content: Text(
-            'Are you sure you want to approve application ${app.applicationNo} for ${app.applicantName}?\n\nAmount: Rs. ${app.amountRequested.toStringAsFixed(0)}'),
+            'Are you sure you want to approve application ${app.applicationNo} for ${app.applicantName}?\n\nAmount: Rs. ${app.amountRequested.toStringAsFixed(0)}\n\nBy approving, you accept joint responsibility for repayment.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -193,7 +188,7 @@ class _QardanListScreenState extends State<QardanListScreen> {
 
     if (confirm == true) {
       try {
-        await _service.captainApprove(app.id);
+        await _service.guarantorApprove(app.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -517,11 +512,14 @@ class _QardanListScreenState extends State<QardanListScreen> {
     final statusLabel = _getStatusLabel(app.status);
     final statusIcon = _getStatusIcon(app.status);
 
-    // Captain approval state
-    final bool showCaptainApproval = _isCaptain &&
-        app.captainMemberId == _currentUserId &&
+    // Guarantor approval state - show action bar if current user is a guarantor who hasn't approved yet
+    final bool isGuarantor1Pending = app.captainMemberId == _currentUserId &&
         !app.captainApproved &&
         app.status == 'pending';
+    final bool isGuarantor2Pending = app.guarantorMemberId == _currentUserId &&
+        !app.guarantorApproved &&
+        app.status == 'pending';
+    final bool showGuarantorAction = isGuarantor1Pending || isGuarantor2Pending;
 
     return GestureDetector(
       onTap: () async {
@@ -539,10 +537,10 @@ class _QardanListScreenState extends State<QardanListScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: showCaptainApproval
+            color: showGuarantorAction
                 ? AppColors.warning.withOpacity(0.5)
                 : Colors.grey.withOpacity(0.1),
-            width: showCaptainApproval ? 1.5 : 1,
+            width: showGuarantorAction ? 1.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
@@ -560,7 +558,7 @@ class _QardanListScreenState extends State<QardanListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Top Row: Date + Status + Captain Badge ──
+                  // ── Top Row: Date + Status + Guarantor Badges ──
                   Row(
                     children: [
                       Expanded(
@@ -596,47 +594,81 @@ class _QardanListScreenState extends State<QardanListScreen> {
                           ),
                         ),
                       ),
-                      // Captain approval badge (visible to captain)
-                      if (_isCaptain) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: app.captainApproved
-                                ? AppColors.success.withOpacity(0.1)
-                                : AppColors.warning.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                app.captainApproved
-                                    ? Icons.verified_rounded
-                                    : Icons.pending_actions_rounded,
-                                size: 12,
+                      // Guarantor approval badges
+                      const SizedBox(width: 6),
+                      // G1 badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: app.captainApproved
+                              ? AppColors.success.withOpacity(0.1)
+                              : AppColors.warning.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              app.captainApproved
+                                  ? Icons.verified_rounded
+                                  : Icons.pending_actions_rounded,
+                              size: 11,
+                              color: app.captainApproved
+                                  ? AppColors.success
+                                  : AppColors.warning,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              'G1',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
                                 color: app.captainApproved
                                     ? AppColors.success
                                     : AppColors.warning,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                app.captainApproved
-                                    ? 'Approved'
-                                    : 'Awaiting',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: app.captainApproved
-                                      ? AppColors.success
-                                      : AppColors.warning,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 4),
+                      // G2 badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: app.guarantorApproved
+                              ? AppColors.success.withOpacity(0.1)
+                              : AppColors.warning.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              app.guarantorApproved
+                                  ? Icons.verified_rounded
+                                  : Icons.pending_actions_rounded,
+                              size: 11,
+                              color: app.guarantorApproved
+                                  ? AppColors.success
+                                  : AppColors.warning,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              'G2',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: app.guarantorApproved
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -666,7 +698,7 @@ class _QardanListScreenState extends State<QardanListScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // ── Application No + Name (for captain view) ──
+                  // ── Application No + Name ──
                   Text(
                     app.applicationNo,
                     style: GoogleFonts.poppins(
@@ -760,8 +792,8 @@ class _QardanListScreenState extends State<QardanListScreen> {
             ),
 
             // ── Bottom Action Bar ──
-            if (showCaptainApproval)
-              // Captain approve button row
+            if (showGuarantorAction)
+              // Guarantor approve button row
               Container(
                 width: double.infinity,
                 padding:
@@ -800,7 +832,7 @@ class _QardanListScreenState extends State<QardanListScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => _captainApprove(app),
+                        onPressed: () => _guarantorApprove(app),
                         icon: const Icon(Icons.check_circle_outline_rounded,
                             size: 16),
                         label: Text('Approve',

@@ -23,6 +23,7 @@ class QardanHasanaService {
     String? reason,
     required double amountRequested,
     required bool termsAccepted,
+    required int guarantor1MemberId,
     required int guarantorMemberId,
   }) async {
     try {
@@ -38,6 +39,7 @@ class QardanHasanaService {
         'reason': reason,
         'amountRequested': amountRequested,
         'termsAccepted': termsAccepted,
+        'guarantor1MemberId': guarantor1MemberId,
         'guarantorMemberId': guarantorMemberId,
       };
 
@@ -307,14 +309,14 @@ class QardanHasanaService {
     }
   }
 
-  /// Captain approves the application
-  Future<void> captainApprove(int applicationId) async {
+  /// Guarantor approves the application (works for both Guarantor 1 and 2)
+  Future<void> guarantorApprove(int applicationId) async {
     try {
       final token = await _localStorage.getToken();
       if (token == null) throw Exception('User not authenticated');
 
       final url =
-          Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint/$applicationId/captain-approve');
+          Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint/$applicationId/guarantor-approve');
 
       final response = await http
           .put(
@@ -343,7 +345,49 @@ class QardanHasanaService {
     }
   }
 
-  /// Update an existing Qardan Hasana application (before captain approval)
+  /// Guarantor rejects the application
+  Future<void> guarantorReject(int applicationId, {String? reason}) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) throw Exception('User not authenticated');
+
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint/$applicationId/guarantor-reject');
+
+      final response = await http
+          .put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'reason': reason}),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else {
+        _handleErrorResponse(response, 'Failed to reject application');
+        throw Exception('Failed to reject application');
+      }
+    } catch (e) {
+      _handleConnectionError(e);
+      rethrow;
+    }
+  }
+
+  /// Captain approves the application (kept for backward compatibility)
+  Future<void> captainApprove(int applicationId) async {
+    return guarantorApprove(applicationId);
+  }
+
+  /// Update an existing Qardan Hasana application (before guarantor approvals)
   Future<QardanHasanaApplication> updateApplication({
     required int applicationId,
     required String applicantName,
@@ -351,6 +395,7 @@ class QardanHasanaService {
     required String applicantMobile,
     String? reason,
     required double amountRequested,
+    required int guarantor1MemberId,
     required int guarantorMemberId,
   }) async {
     try {
@@ -365,6 +410,7 @@ class QardanHasanaService {
         'applicantMobile': applicantMobile,
         'reason': reason,
         'amountRequested': amountRequested,
+        'guarantor1MemberId': guarantor1MemberId,
         'guarantorMemberId': guarantorMemberId,
       };
 

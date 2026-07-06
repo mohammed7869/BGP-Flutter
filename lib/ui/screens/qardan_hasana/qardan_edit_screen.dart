@@ -26,9 +26,10 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
   final _reasonController = TextEditingController();
   final _amountController = TextEditingController();
 
-  // Guarantor
+  // Guarantors
   List<JamaatMember> _jamaatMembers = [];
-  JamaatMember? _selectedGuarantor;
+  JamaatMember? _selectedGuarantor1;
+  JamaatMember? _selectedGuarantor2;
 
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -53,10 +54,17 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
     try {
       _jamaatMembers = await _service.getMembersByJamaat();
 
-      // Try to find and select the current guarantor
-      final currentGuarantorId = widget.application.guarantorMemberId;
-      _selectedGuarantor = _jamaatMembers.cast<JamaatMember?>().firstWhere(
-            (m) => m?.id == currentGuarantorId,
+      // Pre-select current Guarantor 1 (stored in captain_member_id)
+      final currentG1Id = widget.application.captainMemberId;
+      _selectedGuarantor1 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
+            (m) => m?.id == currentG1Id,
+            orElse: () => null,
+          );
+
+      // Pre-select current Guarantor 2
+      final currentG2Id = widget.application.guarantorMemberId;
+      _selectedGuarantor2 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
+            (m) => m?.id == currentG2Id,
             orElse: () => null,
           );
 
@@ -77,10 +85,30 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
   Future<void> _submitEdit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedGuarantor == null) {
+    if (_selectedGuarantor1 == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a Guarantor Member'),
+          content: Text('Please select Guarantor 1'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedGuarantor2 == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select Guarantor 2'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedGuarantor1!.id == _selectedGuarantor2!.id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Guarantor 1 and Guarantor 2 cannot be the same person'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -99,7 +127,8 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
             ? null
             : _reasonController.text.trim(),
         amountRequested: double.parse(_amountController.text.trim()),
-        guarantorMemberId: _selectedGuarantor!.id,
+        guarantor1MemberId: _selectedGuarantor1!.id,
+        guarantorMemberId: _selectedGuarantor2!.id,
       );
 
       if (mounted) {
@@ -178,7 +207,7 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Editing ${widget.application.applicationNo}. Changes will be notified to your Captain.',
+                              'Editing ${widget.application.applicationNo}. Changes will reset guarantor approvals.',
                               style: const TextStyle(
                                   fontSize: 13, color: AppColors.textSecondary),
                             ),
@@ -193,8 +222,6 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                         'Mohallah', widget.application.applicantJamaat),
                     _buildReadOnlyField(
                         'ITS No', widget.application.applicantItsId),
-                    _buildReadOnlyField(
-                        'Captain', widget.application.captainName),
 
                     const SizedBox(height: 8),
                     const Divider(),
@@ -289,7 +316,7 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                       },
                     ),
 
-                    // Guarantor 2 Dropdown
+                    // Guarantor 1 Dropdown
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -306,7 +333,7 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                               Icon(Icons.people_outline,
                                   color: AppColors.primary, size: 20),
                               SizedBox(width: 8),
-                              Text('Guarantor 2 — Member *',
+                              Text('Guarantor 1 *',
                                   style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -315,28 +342,100 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                           ),
                           const SizedBox(height: 12),
                           DropdownButtonFormField<JamaatMember>(
-                            value: _selectedGuarantor,
+                            value: _selectedGuarantor1,
                             isExpanded: true,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10)),
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 12),
-                              hintText: 'Select Guarantor Member',
+                              hintText: 'Select Guarantor 1',
                             ),
                             items: _jamaatMembers.map((m) {
+                              final isDisabled = _selectedGuarantor2 != null &&
+                                  _selectedGuarantor2!.id == m.id;
                               return DropdownMenuItem<JamaatMember>(
                                 value: m,
+                                enabled: !isDisabled,
                                 child: Text('${m.fullName} (${m.itsId})',
-                                    style: const TextStyle(fontSize: 14)),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDisabled
+                                          ? Colors.grey.shade400
+                                          : null,
+                                    )),
                               );
                             }).toList(),
                             onChanged: (value) {
-                              setState(() => _selectedGuarantor = value);
+                              setState(() => _selectedGuarantor1 = value);
                             },
                             validator: (value) {
                               if (value == null) {
-                                return 'Please select a guarantor';
+                                return 'Please select Guarantor 1';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Guarantor 2 Dropdown
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: AppColors.cardShadow,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.people_outline,
+                                  color: AppColors.accentGold, size: 20),
+                              SizedBox(width: 8),
+                              Text('Guarantor 2 *',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<JamaatMember>(
+                            value: _selectedGuarantor2,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              hintText: 'Select Guarantor 2',
+                            ),
+                            items: _jamaatMembers.map((m) {
+                              final isDisabled = _selectedGuarantor1 != null &&
+                                  _selectedGuarantor1!.id == m.id;
+                              return DropdownMenuItem<JamaatMember>(
+                                value: m,
+                                enabled: !isDisabled,
+                                child: Text('${m.fullName} (${m.itsId})',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDisabled
+                                          ? Colors.grey.shade400
+                                          : null,
+                                    )),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() => _selectedGuarantor2 = value);
+                            },
+                            validator: (value) {
+                              if (value == null) {
+                                return 'Please select Guarantor 2';
                               }
                               return null;
                             },

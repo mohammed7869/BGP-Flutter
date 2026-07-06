@@ -11,14 +11,22 @@ class QardanHasanaApplication {
   final double amountRequested;
   final String? applicantSignatureUrl;
   final String? applicantPhotoUrl;
+  final String? applicantProfile;
+  final String? applicantMemberName;
   final int captainMemberId;
   final String captainName;
   final String? captainMobile;
+  final String? captainItsId;
+  final String? captainProfile;
   final bool captainApproved;
   final String? captainApprovedAt;
   final int guarantorMemberId;
   final String guarantorName;
   final String? guarantorMobile;
+  final String? guarantorItsId;
+  final String? guarantorProfile;
+  final bool guarantorApproved;
+  final String? guarantorApprovedAt;
   final String status;
   final String? formImageUrl;
   final double? sanctionedAmount;
@@ -41,6 +49,7 @@ class QardanHasanaApplication {
     required this.applicantMemberId,
     required this.applicantItsId,
     required this.applicantName,
+    this.applicantMemberName,
     required this.applicantJamaat,
     this.applicantOccupation,
     required this.applicantMobile,
@@ -48,14 +57,21 @@ class QardanHasanaApplication {
     required this.amountRequested,
     this.applicantSignatureUrl,
     this.applicantPhotoUrl,
+    this.applicantProfile,
     required this.captainMemberId,
     required this.captainName,
     this.captainMobile,
+    this.captainItsId,
+    this.captainProfile,
     this.captainApproved = false,
     this.captainApprovedAt,
     required this.guarantorMemberId,
     required this.guarantorName,
     this.guarantorMobile,
+    this.guarantorItsId,
+    this.guarantorProfile,
+    this.guarantorApproved = false,
+    this.guarantorApprovedAt,
     required this.status,
     this.formImageUrl,
     this.sanctionedAmount,
@@ -80,6 +96,7 @@ class QardanHasanaApplication {
       applicantMemberId: json['applicantMemberId'] ?? 0,
       applicantItsId: json['applicantItsId'] ?? '',
       applicantName: json['applicantName'] ?? '',
+      applicantMemberName: json['applicantMemberName'],
       applicantJamaat: json['applicantJamaat'] ?? '',
       applicantOccupation: json['applicantOccupation'],
       applicantMobile: json['applicantMobile'] ?? '',
@@ -87,14 +104,21 @@ class QardanHasanaApplication {
       amountRequested: (json['amountRequested'] ?? 0).toDouble(),
       applicantSignatureUrl: json['applicantSignatureUrl'],
       applicantPhotoUrl: json['applicantPhotoUrl'],
+      applicantProfile: json['applicantProfile'],
       captainMemberId: json['captainMemberId'] ?? 0,
       captainName: json['captainName'] ?? '',
       captainMobile: json['captainMobile'],
+      captainItsId: json['captainItsId'],
+      captainProfile: json['captainProfile'],
       captainApproved: json['captainApproved'] == true || json['captainApproved'] == 1,
       captainApprovedAt: json['captainApprovedAt'],
       guarantorMemberId: json['guarantorMemberId'] ?? 0,
       guarantorName: json['guarantorName'] ?? '',
       guarantorMobile: json['guarantorMobile'],
+      guarantorItsId: json['guarantorItsId'],
+      guarantorProfile: json['guarantorProfile'],
+      guarantorApproved: json['guarantorApproved'] == true || json['guarantorApproved'] == 1,
+      guarantorApprovedAt: json['guarantorApprovedAt'],
       status: json['status'] ?? 'pending',
       formImageUrl: json['formImageUrl'],
       sanctionedAmount: json['sanctionedAmount']?.toDouble(),
@@ -139,7 +163,9 @@ class QardanHasanaListItem {
   final double? sanctionedAmount;
   final String status;
   final bool captainApproved;
+  final bool guarantorApproved;
   final int captainMemberId;
+  final int guarantorMemberId;
   final String createdAt;
 
   QardanHasanaListItem({
@@ -152,7 +178,9 @@ class QardanHasanaListItem {
     this.sanctionedAmount,
     required this.status,
     this.captainApproved = false,
+    this.guarantorApproved = false,
     this.captainMemberId = 0,
+    this.guarantorMemberId = 0,
     required this.createdAt,
   });
 
@@ -167,7 +195,9 @@ class QardanHasanaListItem {
       sanctionedAmount: json['sanctionedAmount']?.toDouble(),
       status: json['status'] ?? 'pending',
       captainApproved: json['captainApproved'] == true || json['captainApproved'] == 1,
+      guarantorApproved: json['guarantorApproved'] == true || json['guarantorApproved'] == 1,
       captainMemberId: json['captainMemberId'] ?? 0,
+      guarantorMemberId: json['guarantorMemberId'] ?? 0,
       createdAt: json['createdAt'] ?? '',
     );
   }
