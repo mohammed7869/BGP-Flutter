@@ -443,6 +443,43 @@ class QardanHasanaService {
     }
   }
 
+  /// Get repayment summary (paid / pending / next installment) + history
+  Future<QardanRepaymentSummary> getRepaymentSummary(int id) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) throw Exception('User not authenticated');
+
+      final url =
+          Uri.parse('${ApiConstants.baseUrl}$_baseEndpoint/$id/repayments');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+        return QardanRepaymentSummary.fromJson(jsonResponse);
+      } else {
+        _handleErrorResponse(response, 'Failed to fetch repayments');
+        throw Exception('Failed to fetch repayments');
+      }
+    } catch (e) {
+      _handleConnectionError(e);
+      rethrow;
+    }
+  }
+
   /// Download PDF of the application form
   Future<List<int>> downloadPdf(int id) async {
     try {

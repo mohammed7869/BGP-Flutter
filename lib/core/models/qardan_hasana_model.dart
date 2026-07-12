@@ -218,6 +218,119 @@ class QardanHasanaListItem {
   }
 }
 
+/// A single recorded repayment / installment payment.
+class QardanRepayment {
+  final int id;
+  final int qardanHasanaId;
+  final int? installmentNumber;
+  final double amountPaid;
+  final String paymentDate;
+  final String? paymentMode;
+  final String? receiptImageUrl;
+  final String? notes;
+  final int? recordedBy;
+  final String? recordedByName;
+  final String createdAt;
+
+  QardanRepayment({
+    required this.id,
+    required this.qardanHasanaId,
+    this.installmentNumber,
+    required this.amountPaid,
+    required this.paymentDate,
+    this.paymentMode,
+    this.receiptImageUrl,
+    this.notes,
+    this.recordedBy,
+    this.recordedByName,
+    required this.createdAt,
+  });
+
+  factory QardanRepayment.fromJson(Map<String, dynamic> json) {
+    return QardanRepayment(
+      id: json['id'] ?? 0,
+      qardanHasanaId: json['qardanHasanaId'] ?? 0,
+      installmentNumber: json['installmentNumber'],
+      amountPaid: (json['amountPaid'] ?? 0).toDouble(),
+      paymentDate: json['paymentDate'] ?? '',
+      paymentMode: json['paymentMode'],
+      receiptImageUrl: json['receiptImageUrl'],
+      notes: json['notes'],
+      recordedBy: json['recordedBy'],
+      recordedByName: json['recordedByName'],
+      createdAt: json['createdAt'] ?? '',
+    );
+  }
+}
+
+/// Repayment summary for an application: how much is paid, pending and the
+/// next installment date, along with the full payment history.
+class QardanRepaymentSummary {
+  final int qardanHasanaId;
+  final String applicationNo;
+  final String status;
+  final double? sanctionedAmount;
+  final double? installmentAmount;
+  final int? numberOfMonths;
+  final String? installmentDateFrom;
+  final String? installmentDateTo;
+  final double totalPaid;
+  final double remainingAmount;
+  final int paymentsCount;
+  final int installmentsCovered;
+  final bool isFullyPaid;
+  final int? nextInstallmentNumber;
+  final String? nextInstallmentDate;
+  final double? nextInstallmentAmount;
+  final List<QardanRepayment> repayments;
+
+  QardanRepaymentSummary({
+    required this.qardanHasanaId,
+    required this.applicationNo,
+    required this.status,
+    this.sanctionedAmount,
+    this.installmentAmount,
+    this.numberOfMonths,
+    this.installmentDateFrom,
+    this.installmentDateTo,
+    required this.totalPaid,
+    required this.remainingAmount,
+    required this.paymentsCount,
+    required this.installmentsCovered,
+    required this.isFullyPaid,
+    this.nextInstallmentNumber,
+    this.nextInstallmentDate,
+    this.nextInstallmentAmount,
+    this.repayments = const [],
+  });
+
+  factory QardanRepaymentSummary.fromJson(Map<String, dynamic> json) {
+    return QardanRepaymentSummary(
+      qardanHasanaId: json['qardanHasanaId'] ?? 0,
+      applicationNo: json['applicationNo'] ?? '',
+      status: json['status'] ?? '',
+      sanctionedAmount: json['sanctionedAmount']?.toDouble(),
+      installmentAmount: json['installmentAmount']?.toDouble(),
+      numberOfMonths: json['numberOfMonths'],
+      installmentDateFrom: json['installmentDateFrom'],
+      installmentDateTo: json['installmentDateTo'],
+      totalPaid: (json['totalPaid'] ?? 0).toDouble(),
+      remainingAmount: (json['remainingAmount'] ?? 0).toDouble(),
+      paymentsCount: json['paymentsCount'] ?? 0,
+      installmentsCovered: json['installmentsCovered'] ?? 0,
+      isFullyPaid: json['isFullyPaid'] == true || json['isFullyPaid'] == 1,
+      nextInstallmentNumber: json['nextInstallmentNumber'],
+      nextInstallmentDate: json['nextInstallmentDate'],
+      nextInstallmentAmount: json['nextInstallmentAmount']?.toDouble(),
+      repayments: (json['repayments'] is List)
+          ? (json['repayments'] as List)
+              .map((e) => QardanRepayment.fromJson(e as Map<String, dynamic>))
+              .toList()
+          : const [],
+    );
+  }
+}
+
 class JamaatMember {
   final int id;
   final String fullName;

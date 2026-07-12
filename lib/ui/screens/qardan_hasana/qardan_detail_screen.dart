@@ -28,6 +28,7 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
   final QardanHasanaService _service = QardanHasanaService();
   final LocalStorageService _localStorage = LocalStorageService();
   QardanHasanaApplication? _application;
+  QardanRepaymentSummary? _repaymentSummary;
   bool _isLoading = true;
   bool _isDownloading = false;
   bool _isApproving = false;
@@ -59,11 +60,25 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
     try {
       _application = await _service.getApplicationById(widget.applicationId);
       setState(() => _isLoading = false);
+      // Load repayment progress for sanctioned applications (non-blocking)
+      if (_application?.status == 'sanctioned') {
+        _loadRepaymentSummary();
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
         _error = e.toString().replaceAll('Exception: ', '');
       });
+    }
+  }
+
+  Future<void> _loadRepaymentSummary() async {
+    try {
+      final summary =
+          await _service.getRepaymentSummary(widget.applicationId);
+      if (mounted) setState(() => _repaymentSummary = summary);
+    } catch (_) {
+      // Endpoint may be unavailable on older API builds — ignore silently
     }
   }
 
@@ -1255,6 +1270,12 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
           ),
           const SizedBox(height: 16),
 
+          // ── REPAYMENT PROGRESS (if sanctioned) ──
+          if (app.status == 'sanctioned' && _repaymentSummary != null) ...[
+            _buildRepaymentSection(_repaymentSummary!),
+            const SizedBox(height: 16),
+          ],
+
           // ── OFFICE USE ONLY (if sanctioned) ──
           if (app.status == 'sanctioned' && app.sanctionedAmount != null) ...[
             _buildSectionCard(
@@ -1520,6 +1541,349 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600)),
         ],
+      ),
+    );
+  }
+
+  String _formatCurrency(double? value) {
+    if (value == null) return '₹0';
+    final formatted = value.toStringAsFixed(0).replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{2})+(\d)(?!\d))'),
+          (m) => '${m[1]},',
+        );
+    return '₹$formatted';
+  }
+
+  Widget _buildRepaymentSection(QardanRepaymentSummary s) {
+    final sanctioned = s.sanctionedAmount ?? 0;
+    final progress =
+        sanctioned > 0 ? (s.totalPaid / sanctioned).clamp(0.0, 1.0) : 0.0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.payments_outlined,
+                  color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              const Text('Repayment Progress',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+              const Spacer(),
+              if (s.isFullyPaid)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle,
+                          color: AppColors.success, size: 14),
+                      SizedBox(width: 4),
+                      Text('Fully Paid',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.success)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 14),
+
+          // Paid / Pending stat tiles
+          Row(
+            children: [
+              Expanded(
+                child: _buildRepaymentStat(
+                  label: 'Paid Till Now',
+                  value: _formatCurrency(s.totalPaid),
+                  color: AppColors.success,
+                  bg: AppColors.success.withOpacity(0.08),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildRepaymentStat(
+                  label: 'Pending',
+                  value: _formatCurrency(s.remainingAmount),
+                  color: AppColors.warning,
+                  bg: AppColors.warning.withOpacity(0.10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                  s.isFullyPaid ? AppColors.success : AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_formatCurrency(s.totalPaid)} of ${_formatCurrency(sanctioned)}',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+
+          // Next installment banner
+          if (!s.isFullyPaid && s.nextInstallmentDate != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.info.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.info.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.event_available_outlined,
+                      color: AppColors.info, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Next Installment${s.nextInstallmentNumber != null ? ' (#${s.nextInstallmentNumber})' : ''}',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatShortDate(s.nextInstallmentDate),
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.info),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (s.nextInstallmentAmount != null)
+                    Text(
+                      _formatCurrency(s.nextInstallmentAmount),
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.info),
+                    ),
+                ],
+              ),
+            ),
+          ],
+
+          // Payment history
+          if (s.repayments.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text('Payment History (${s.repayments.length})',
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            ...s.repayments.asMap().entries.map(
+                (e) => _buildRepaymentTile(e.value, e.key + 1)),
+          ] else ...[
+            const SizedBox(height: 14),
+            Center(
+              child: Text('No payments recorded yet.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRepaymentStat({
+    required String label,
+    required String value,
+    required Color color,
+    required Color bg,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          const SizedBox(height: 4),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRepaymentTile(QardanRepayment r, int index) {
+    final imageUrl = (r.receiptImageUrl != null &&
+            r.receiptImageUrl!.isNotEmpty)
+        ? (r.receiptImageUrl!.startsWith('http')
+            ? r.receiptImageUrl!
+            : '${ApiConstants.baseUrl}/${r.receiptImageUrl}')
+        : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          // Index badge
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.10),
+              shape: BoxShape.circle,
+            ),
+            child: Text('${r.installmentNumber ?? index}',
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_formatShortDate(r.paymentDate),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary)),
+                if (r.paymentMode != null && r.paymentMode!.isNotEmpty)
+                  Text(r.paymentMode!,
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey.shade600)),
+                if (r.notes != null && r.notes!.isNotEmpty)
+                  Text(r.notes!,
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey.shade500)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(_formatCurrency(r.amountPaid),
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.success)),
+          if (imageUrl != null) ...[
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: () => _showReceiptImage(imageUrl),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  imageUrl,
+                  width: 42,
+                  height: 42,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 42,
+                    height: 42,
+                    color: Colors.grey.shade200,
+                    child: Icon(Icons.receipt_long,
+                        size: 18, color: Colors.grey.shade400),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showReceiptImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: InteractiveViewer(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    padding: const EdgeInsets.all(24),
+                    color: Colors.white,
+                    child: const Text('Unable to load image'),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(4),
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                radius: 16,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
