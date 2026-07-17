@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "850751814134",
+    "project_id": "burhani-guards-pune",
+    "storage_bucket": "burhani-guards-pune.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:850751814134:android:261f69aa1218befa9dafd7",
+        "android_client_info": {
+          "package_name": "com.burhaniguards.pune.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWWtLItMO10lVta87drHP4iPMajVAYXzQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

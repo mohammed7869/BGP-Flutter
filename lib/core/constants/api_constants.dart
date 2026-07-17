@@ -5,7 +5,7 @@ class ApiConstants {
   // static const String baseUrl = 'http://192.168.141.207:5000';
   // static const String baseUrl = 'http://192.168.31.97:5000'; //Local URL
   // static const String baseUrl = 'http://192.168.1.5:5000'; //Local URL
-  // static const String baseUrl = 'http://10.76.66.90:5000'; //Local URL
+  // static const String baseUrl = 'http://10.243.56.246:5000'; //Local URL
   // static const String baseUrl = 'http://192.168.71.203:5000'; //Local URL
   // API Endpoints - Unified users table
   static const String login = '/api/1/login';
@@ -40,4 +40,17 @@ class ApiConstants {
 
   // Image URLs
   static String get miqaatImagesBaseUrl => '$baseUrl/bgp_uploads/miqaat_images';
+
+  // API Endpoints - Notifications
+  static const String notifications = '/api/1/notifications';
+  static const String unreadCount = '/api/1/notifications/unread-count';
+  static const String markRead = '/api/1/notifications/mark-read';
+  static const String markAllRead = '/api/1/notifications/mark-all-read';
+  static const String sendNotification = '/api/1/notifications/send';
+
+  // SignalR Hub URL
+  static String get notificationHubUrl => '$baseUrl/hubs/notification';
+
+  // FCM Token Registration
+  static const String registerFcmToken = '/api/1/users/fcm-token';
 }

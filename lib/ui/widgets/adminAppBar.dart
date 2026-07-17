@@ -1,7 +1,9 @@
 import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
+import 'package:burhaniguardsapp/core/services/signalr_service.dart';
 import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
+import 'package:burhaniguardsapp/ui/widgets/notification_bell_widget.dart';
 import 'package:flutter/material.dart';
 
 Widget buildAppBar(BuildContext context, GlobalKey<ScaffoldState> scaffoldKey) {
@@ -42,11 +44,12 @@ Widget buildAppBar(BuildContext context, GlobalKey<ScaffoldState> scaffoldKey) {
           ),
         ),
         SizedBox(
-          width: 96,
+          width: 136,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
+              const NotificationBellWidget(),
               IconButton(
                 icon: const Icon(Icons.calendar_month_outlined,
                     color: Colors.white, size: 26),
@@ -86,6 +89,8 @@ Widget buildAppBar(BuildContext context, GlobalKey<ScaffoldState> scaffoldKey) {
                   if (shouldLogout == true) {
                     final localStorage = LocalStorageService();
                     await localStorage.clearAll();
+                    // Disconnect SignalR on logout
+                    await SignalRService().disconnect();
                     if (context.mounted) {
                       Navigator.of(context, rootNavigator: true)
                           .pushAndRemoveUntil(
