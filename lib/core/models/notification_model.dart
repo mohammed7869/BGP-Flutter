@@ -6,6 +6,8 @@ class NotificationModel {
   final String body;
   final String type;
   final String? referenceId;
+  final String? imageUrl;
+  final String? linkUrl;
   final bool isRead;
   final DateTime createdAt;
   final DateTime? readAt;
@@ -16,6 +18,8 @@ class NotificationModel {
     required this.body,
     required this.type,
     this.referenceId,
+    this.imageUrl,
+    this.linkUrl,
     required this.isRead,
     required this.createdAt,
     this.readAt,
@@ -28,6 +32,8 @@ class NotificationModel {
       body: json['body']?.toString() ?? '',
       type: json['type']?.toString() ?? 'general',
       referenceId: json['referenceId']?.toString(),
+      imageUrl: json['imageUrl']?.toString(),
+      linkUrl: json['linkUrl']?.toString(),
       isRead: json['isRead'] as bool? ?? false,
       createdAt: json['createdAt'] != null
           ? _parseUtcDate(json['createdAt'].toString())
@@ -55,6 +61,8 @@ class NotificationModel {
       'body': body,
       'type': type,
       'referenceId': referenceId,
+      'imageUrl': imageUrl,
+      'linkUrl': linkUrl,
       'isRead': isRead,
       'createdAt': createdAt.toIso8601String(),
       'readAt': readAt?.toIso8601String(),
@@ -88,6 +96,8 @@ class NotificationModel {
       body: body,
       type: type,
       referenceId: referenceId,
+      imageUrl: imageUrl,
+      linkUrl: linkUrl,
       isRead: true,
       createdAt: createdAt,
       readAt: DateTime.now(),

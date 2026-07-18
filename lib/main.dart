@@ -7,6 +7,7 @@ import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:burhaniguardsapp/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -14,10 +15,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase (must be done before any Firebase service)
-  await Firebase.initializeApp();
-
-  // Register the background message handler (runs even when app is killed)
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Register the background message handler (runs even when app is killed)
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+  }
 
   // Setup global error handlers
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -139,8 +145,12 @@ class _SplashScreenState extends State<SplashScreen> {
       await signalR.connect();
 
       // 5. Initialize Firebase Cloud Messaging (background/killed state)
-      final fcmService = FcmService();
-      await fcmService.initialize();
+      try {
+        final fcmService = FcmService();
+        await fcmService.initialize();
+      } catch (e) {
+        debugPrint('FCM initialization failed: $e');
+      }
 
       debugPrint('Notification services initialized successfully');
     } catch (e) {

@@ -100,6 +100,44 @@ class MiqaatService {
     }
   }
 
+  Future<Map<String, dynamic>?> getMiqaatById(int id) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.getAllMiqaats}/$id');
+
+      final response = await http
+          .get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+        return jsonResponse;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error fetching miqaat by id: $e');
+      }
+      return null;
+    }
+  }
+
   Future<JamiyatJamaatResponse?> getJamiyatJamaatWithCounts() async {
     try {
       final token = await _localStorage.getToken();

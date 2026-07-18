@@ -23,7 +23,7 @@ class NotificationBellWidget extends StatefulWidget {
 }
 
 class _NotificationBellWidgetState extends State<NotificationBellWidget>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final NotificationApiService _apiService = NotificationApiService();
   final SignalRService _signalR = SignalRService();
 
@@ -35,6 +35,7 @@ class _NotificationBellWidgetState extends State<NotificationBellWidget>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Setup bounce animation for bell icon when new notification arrives
     _bounceController = AnimationController(
@@ -52,6 +53,13 @@ class _NotificationBellWidgetState extends State<NotificationBellWidget>
     _notificationSub = _signalR.onNotificationReceived.listen((_) {
       _onNewNotification();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchUnreadCount();
+    }
   }
 
   Future<void> _fetchUnreadCount() async {
@@ -73,6 +81,7 @@ class _NotificationBellWidgetState extends State<NotificationBellWidget>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notificationSub?.cancel();
     _bounceController.dispose();
     super.dispose();
@@ -86,7 +95,7 @@ class _NotificationBellWidgetState extends State<NotificationBellWidget>
         icon: Stack(
           clipBehavior: Clip.none,
           children: [
-            const Icon(Icons.notifications_outlined, size: 28),
+            const Icon(Icons.notifications_outlined, size: 28, color: Colors.white),
             if (_unreadCount > 0)
               Positioned(
                 right: -4,

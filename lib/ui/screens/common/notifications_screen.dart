@@ -117,11 +117,91 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _apiService.markAsRead(notification.id);
   }
 
-  /// Mark as read and navigate to the relevant screen.
+  /// Mark as read and navigate to the relevant screen or show details.
   void _onNotificationTap(NotificationModel notification, int index) {
     _markAsRead(notification, index);
-    final payload = '${notification.type}:${notification.referenceId ?? notification.id}';
+
+    // If there's an external link, handle it
+    if (notification.linkUrl != null && notification.linkUrl!.isNotEmpty) {
+      String payload = '${notification.type}:${notification.referenceId ?? notification.id}|linkUrl:${notification.linkUrl}';
+      NotificationNavigator.handleNotificationTap(payload);
+      return;
+    }
+
+    // For these types, show a dialog with image and details directly instead of navigating
+    if (['admin', 'general', 'survey', 'member'].contains(notification.type)) {
+      _showNotificationDetailsDialog(notification);
+      return;
+    }
+
+    String payload = '${notification.type}:${notification.referenceId ?? notification.id}';
     NotificationNavigator.handleNotificationTap(payload);
+  }
+
+  void _showNotificationDetailsDialog(NotificationModel notification) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          contentPadding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notification.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Icon(Icons.close, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+              // Image (if available)
+              if (notification.imageUrl != null && notification.imageUrl!.isNotEmpty)
+                Image.network(
+                  notification.imageUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const SizedBox(
+                      height: 150,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                ),
+              // Body
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  notification.body,
+                  style: const TextStyle(fontSize: 14),
+                  textAlign: TextAlign.left,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _markAllAsRead() async {
@@ -344,6 +424,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (notification.imageUrl != null && notification.imageUrl!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            notification.imageUrl!,
+                            height: 120,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    if (notification.linkUrl != null && notification.linkUrl!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6.0),
+                        child: Row(
+                          children: [
+                            Icon(Icons.link, size: 14, color: theme.colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Tap to open link',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 6),
                     // Type badge
                     Container(

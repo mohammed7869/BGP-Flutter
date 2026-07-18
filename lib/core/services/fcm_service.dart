@@ -8,6 +8,7 @@ import '../models/notification_model.dart';
 import 'local_storage_service.dart';
 import 'notification_service.dart';
 import 'notification_navigator.dart';
+import 'package:burhaniguardsapp/firebase_options.dart';
 
 /// Top-level handler for background FCM messages.
 /// Must be a top-level function (not inside a class).
@@ -15,7 +16,9 @@ import 'notification_navigator.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Firebase must be initialized in the background isolate
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   debugPrint('FCM Background: ${message.notification?.title}');
   // The system automatically displays the notification on the lock screen
   // for "notification" type messages. No manual display needed here.
@@ -106,6 +109,8 @@ class FcmService {
     // Convert FCM message to our NotificationModel and show via local notifications
     final type = message.data['type'] ?? 'general';
     final referenceId = message.data['referenceId'];
+    final imageUrl = message.data['imageUrl'];
+    final linkUrl = message.data['linkUrl'];
 
     final model = NotificationModel(
       id: message.hashCode,
@@ -113,6 +118,8 @@ class FcmService {
       body: notification.body ?? '',
       type: type,
       referenceId: referenceId,
+      imageUrl: imageUrl,
+      linkUrl: linkUrl,
       isRead: false,
       createdAt: DateTime.now(),
     );
@@ -126,9 +133,13 @@ class FcmService {
 
     final type = message.data['type'] ?? 'general';
     final referenceId = message.data['referenceId'];
+    final linkUrl = message.data['linkUrl'];
 
     if (type.isNotEmpty) {
-      final payload = referenceId != null ? '$type:$referenceId' : type;
+      String payload = referenceId != null ? '$type:$referenceId' : type;
+      if (linkUrl != null && linkUrl.isNotEmpty) {
+        payload += '|linkUrl:$linkUrl';
+      }
       // Use the existing NotificationNavigator for deep-linking
       NotificationNavigator.handleNotificationTap(payload);
     }
