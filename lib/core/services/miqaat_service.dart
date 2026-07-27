@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
@@ -23,6 +24,7 @@ class MiqaatService {
     required DateTime tillDate,
     required int volunteerLimit,
     String? aboutMiqaat,
+    File? imageFile,
   }) async {
     try {
       final token = await _localStorage.getToken();
@@ -32,31 +34,36 @@ class MiqaatService {
 
       final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.createMiqaat}');
       
-      final requestBody = {
-        'miqaatName': miqaatName,
-        'jamaat': jamaat,
-        'jamiyat': jamiyat,
-        'fromDate': fromDate.toIso8601String(),
-        'tillDate': tillDate.toIso8601String(),
-        'volunteerLimit': volunteerLimit,
-        'aboutMiqaat': aboutMiqaat,
-      };
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Authorization'] = 'Bearer $token';
+      
+      request.fields['miqaatName'] = miqaatName;
+      request.fields['jamaat'] = jamaat;
+      request.fields['jamiyat'] = jamiyat;
+      request.fields['fromDate'] = fromDate.toIso8601String();
+      request.fields['tillDate'] = tillDate.toIso8601String();
+      request.fields['volunteerLimit'] = volunteerLimit.toString();
+      if (aboutMiqaat != null && aboutMiqaat.isNotEmpty) {
+        request.fields['aboutMiqaat'] = aboutMiqaat;
+      }
+      
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'ImageFile',
+            imageFile.path,
+          ),
+        );
+      }
 
-      final response = await http
-          .post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(requestBody),
-      )
-          .timeout(
+      final streamedResponse = await request.send().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
           throw Exception('Connection timeout. Please check your network.');
         },
       );
+      
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;

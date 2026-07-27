@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../ui/screens/admin/adminDashboard.dart';
 import '../../ui/screens/common/notifications_screen.dart';
 import '../../ui/screens/qardan_hasana/qardan_detail_screen.dart';
@@ -97,13 +98,38 @@ class NotificationNavigator {
                             );
                           },
                         ),
-                      // About Miqaat
+                      // Miqaat Details
                       Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          miqaatData['aboutMiqaat'] ?? 'A new Miqaat has been created.',
-                          style: const TextStyle(fontSize: 14),
-                          textAlign: TextAlign.center,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              miqaatData['miqaatName'] ?? 'New Miqaat',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            if (miqaatData['fromDate'] != null)
+                              Text('From: ${DateFormat('dd MMM yyyy').format(DateTime.parse(miqaatData['fromDate']))}', style: const TextStyle(fontSize: 13)),
+                            if (miqaatData['tillDate'] != null)
+                              Text('Till: ${DateFormat('dd MMM yyyy').format(DateTime.parse(miqaatData['tillDate']))}', style: const TextStyle(fontSize: 13)),
+                            const SizedBox(height: 4),
+                            if (miqaatData['jamaat'] != null)
+                              Text('Jamaat: ${miqaatData['jamaat']}', style: const TextStyle(fontSize: 13)),
+                            if (miqaatData['jamiyat'] != null)
+                              Text('Jamiyat: ${miqaatData['jamiyat']}', style: const TextStyle(fontSize: 13)),
+                            if (miqaatData['volunteerLimit'] != null)
+                              Text('Volunteer Limit: ${miqaatData['volunteerLimit']}', style: const TextStyle(fontSize: 13)),
+                            if (miqaatData['aboutMiqaat'] != null && miqaatData['aboutMiqaat'].toString().isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              const Text('About:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text(
+                                miqaatData['aboutMiqaat'],
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ]
+                          ],
                         ),
                       ),
                     ],
@@ -113,14 +139,6 @@ class NotificationNavigator {
             );
           }
         }
-
-        // Navigate to Dashboard which shows miqaat listing
-        navigator.pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => const AdminDashboardScreen(),
-          ),
-          (route) => false, // Remove all previous routes
-        );
         break;
 
       case 'qardan':

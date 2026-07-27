@@ -1,7 +1,9 @@
 import 'package:burhaniguardsapp/core/services/auth_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 
 class CreateMiqaatScreen extends StatefulWidget {
@@ -35,6 +37,9 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
   final TextEditingController _volunteerLimitController =
       TextEditingController();
   final TextEditingController _aboutController = TextEditingController();
+
+  File? _notificationImage;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -170,6 +175,8 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
               // Bohra Miqaat Calendar Reference
               _buildBohrCalendarCard(),
               const SizedBox(height: 16),
+              _buildNotificationImagePicker(),
+              const SizedBox(height: 16),
               _buildMultilineTextField('About Miqaat', _aboutController),
               const SizedBox(height: 30),
               if (_isCaptain)
@@ -277,6 +284,100 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
             }
             return null;
           },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _notificationImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildNotificationImagePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Notification Image (Optional)',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Add an image to display in the push notification when this miqaat is created.',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _pickImage,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('Choose file'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _notificationImage != null
+                        ? _notificationImage!.path.split('/').last
+                        : 'No file chosen',
+                    style: TextStyle(
+                      color: _notificationImage != null ? Colors.black : Colors.grey,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (_notificationImage != null)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () {
+                      setState(() {
+                        _notificationImage = null;
+                      });
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -569,6 +670,7 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
         aboutMiqaat: _aboutController.text.trim().isEmpty
             ? null
             : _aboutController.text.trim(),
+        imageFile: _notificationImage,
       );
 
       if (mounted) {
@@ -590,6 +692,7 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
           _selectedJamaat = null;
           _fromDate = null;
           _tillDate = null;
+          _notificationImage = null;
         });
 
         // Use pushReplacement to remove CreateMiqaatScreen from stack
