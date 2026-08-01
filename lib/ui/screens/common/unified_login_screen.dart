@@ -7,6 +7,7 @@ import 'package:burhaniguardsapp/ui/widgets/password_change_dialog.dart';
 import 'package:burhaniguardsapp/ui/widgets/baawan_erp_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:upgrader/upgrader.dart';
 import 'dart:ui';
 
 class UnifiedLoginScreen extends StatefulWidget {
@@ -147,7 +148,11 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: UpgradeAlert(
+        upgrader: Upgrader(
+          durationUntilAlertAgain: const Duration(hours: 12),
+        ),
+        child: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/welcome2.jpg'),
@@ -350,6 +355,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen>
               },
             ),
           ),
+        ),
         ),
       ),
     );
