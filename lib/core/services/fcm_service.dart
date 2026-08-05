@@ -178,6 +178,17 @@ class FcmService {
       debugPrint('FCM: Error sending token to server: $e');
     }
   }
+  /// Clear token on logout to prevent receiving notifications for the previous user.
+  Future<void> clearToken() async {
+    try {
+      await _messaging.deleteToken();
+      _currentToken = null;
+      _isInitialized = false; // Reset initialization so it gets a new token properly on next login
+      debugPrint('FCM: Token deleted successfully on logout');
+    } catch (e) {
+      debugPrint('FCM: Error deleting token on logout: $e');
+    }
+  }
 
   /// Get the current FCM token (useful for debugging).
   String? get currentToken => _currentToken;

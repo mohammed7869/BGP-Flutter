@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import '../models/auth_models.dart';
 import 'local_storage_service.dart';
+import 'fcm_service.dart';
+import 'signalr_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -316,6 +318,15 @@ class AuthService {
 
   /// Logout - clear all stored data
   Future<void> logout() async {
+    // 1. Clear FCM token from device
+    final fcmService = FcmService();
+    await fcmService.clearToken();
+    
+    // 2. Disconnect from SignalR realtime socket
+    final signalRService = SignalRService();
+    await signalRService.disconnect();
+
+    // 3. Clear local storage
     await _localStorage.clearAll();
   }
 

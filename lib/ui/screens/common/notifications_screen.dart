@@ -173,28 +173,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ],
                 ),
               ),
-              // Image (if available)
-              if (notification.imageUrl != null && notification.imageUrl!.isNotEmpty)
-                Image.network(
-                  notification.imageUrl!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const SizedBox(
-                      height: 150,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  },
-                ),
-              // Body
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  notification.body,
-                  style: const TextStyle(fontSize: 14),
-                  textAlign: TextAlign.left,
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image (if available)
+                      if (notification.imageUrl != null && notification.imageUrl!.isNotEmpty)
+                        Image.network(
+                          notification.imageUrl!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const SizedBox(
+                              height: 150,
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          },
+                        ),
+                      // Body
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          notification.body,
+                          style: const TextStyle(fontSize: 14),
+                          textAlign: TextAlign.left,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

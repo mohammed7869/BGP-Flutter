@@ -83,53 +83,61 @@ class NotificationNavigator {
                           ],
                         ),
                       ),
-                      // Image (if available)
-                      if (miqaatData['notificationImage'] != null && miqaatData['notificationImage'].isNotEmpty)
-                        Image.network(
-                          miqaatData['notificationImage'],
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const SizedBox(
-                              height: 150,
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          },
-                        ),
-                      // Miqaat Details
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              miqaatData['miqaatName'] ?? 'New Miqaat',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            if (miqaatData['fromDate'] != null)
-                              Text('From: ${DateFormat('dd MMM yyyy').format(DateTime.parse(miqaatData['fromDate']))}', style: const TextStyle(fontSize: 13)),
-                            if (miqaatData['tillDate'] != null)
-                              Text('Till: ${DateFormat('dd MMM yyyy').format(DateTime.parse(miqaatData['tillDate']))}', style: const TextStyle(fontSize: 13)),
-                            const SizedBox(height: 4),
-                            if (miqaatData['jamaat'] != null)
-                              Text('Jamaat: ${miqaatData['jamaat']}', style: const TextStyle(fontSize: 13)),
-                            if (miqaatData['jamiyat'] != null)
-                              Text('Jamiyat: ${miqaatData['jamiyat']}', style: const TextStyle(fontSize: 13)),
-                            if (miqaatData['volunteerLimit'] != null)
-                              Text('Volunteer Limit: ${miqaatData['volunteerLimit']}', style: const TextStyle(fontSize: 13)),
-                            if (miqaatData['aboutMiqaat'] != null && miqaatData['aboutMiqaat'].toString().isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              const Text('About:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Text(
-                                miqaatData['aboutMiqaat'],
-                                style: const TextStyle(fontSize: 13),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Image (if available)
+                              if (miqaatData['notificationImage'] != null && miqaatData['notificationImage'].isNotEmpty)
+                                Image.network(
+                                  miqaatData['notificationImage'],
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const SizedBox(
+                                      height: 150,
+                                      child: Center(child: CircularProgressIndicator()),
+                                    );
+                                  },
+                                ),
+                              // Miqaat Details
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      miqaatData['miqaatName'] ?? 'New Miqaat',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (miqaatData['fromDate'] != null)
+                                      Text('From: ${DateFormat('dd MMM yyyy').format(DateTime.parse(miqaatData['fromDate']))}', style: const TextStyle(fontSize: 13)),
+                                    if (miqaatData['tillDate'] != null)
+                                      Text('Till: ${DateFormat('dd MMM yyyy').format(DateTime.parse(miqaatData['tillDate']))}', style: const TextStyle(fontSize: 13)),
+                                    const SizedBox(height: 4),
+                                    if (miqaatData['jamiyat'] != null)
+                                      Text('Jamiyat: ${miqaatData['jamiyat']}', style: const TextStyle(fontSize: 13)),
+                                    if (miqaatData['volunteerLimit'] != null)
+                                      Text('Volunteer Limit: ${miqaatData['volunteerLimit']}', style: const TextStyle(fontSize: 13)),
+                                    if (miqaatData['aboutMiqaat'] != null && miqaatData['aboutMiqaat'].toString().isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      const Text('About:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        miqaatData['aboutMiqaat'],
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ]
+                                  ],
+                                ),
                               ),
-                            ]
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ],

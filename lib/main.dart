@@ -6,6 +6,7 @@ import 'package:burhaniguardsapp/core/services/signalr_service.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:upgrader/upgrader.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:burhaniguardsapp/firebase_options.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +45,17 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       // Use the global navigator key for notification deep-linking
       navigatorKey: NotificationNavigator.navigatorKey,
+      builder: (context, child) {
+        return UpgradeAlert(
+          upgrader: Upgrader(
+            countryCode: 'IN',
+          ),
+          showIgnore: false,
+          showLater: false,
+          barrierDismissible: false,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF0D7377),

@@ -968,6 +968,7 @@ class Miqaat {
   final List<String>? khidmatDone;
   final bool isReportSubmitted;
   final bool isAdminCreated;
+  final bool isEnrollmentStopped;
 
   Miqaat({
     required this.id,
@@ -992,6 +993,7 @@ class Miqaat {
     this.khidmatDone,
     this.isReportSubmitted = false,
     this.isAdminCreated = false,
+    this.isEnrollmentStopped = false,
   });
 
   bool get isInternational => miqaatType == 'International';
@@ -1045,6 +1047,7 @@ class Miqaat {
       khidmatDone: khidmatList,
       isReportSubmitted: json['isReportSubmitted'] as bool? ?? false,
       isAdminCreated: json['isAdminCreated'] as bool? ?? false,
+      isEnrollmentStopped: json['isEnrollmentStopped'] as bool? ?? false,
     );
   }
 

@@ -16,7 +16,6 @@ import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
 import 'package:burhaniguardsapp/ui/widgets/survey_popup.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:upgrader/upgrader.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -235,11 +234,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       backgroundColor: AppColors.background,
       key: scaffoldKey,
       drawer: const AdminAppDrawer(),
-      body: UpgradeAlert(
-        upgrader: Upgrader(
-          durationUntilAlertAgain: const Duration(hours: 12),
-        ),
-        child: SafeArea(
+      body: SafeArea(
         child: Column(
           children: [
             buildAppBar(context, scaffoldKey),
@@ -273,8 +268,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           ],
         ),
       ),
-    ),
-    bottomNavigationBar: const CustomBottomNavBarCaptain(),
+      bottomNavigationBar: const CustomBottomNavBarCaptain(),
     );
   }
 
@@ -1421,6 +1415,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     List<MemberEnrollmentDay> enrollmentDays,
     int index,
   ) async {
+    if (miqaat.isEnrollmentStopped) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enrollment for this have been stopped.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     try {
       await _miqaatService.updateMemberMiqaatStatus(
         memberId: memberId,

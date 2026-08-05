@@ -5,6 +5,7 @@ import 'package:burhaniguardsapp/core/constants/app_colors.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/memberMiqaatHistoryScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/bohraCalendarScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
@@ -850,8 +851,8 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
   final LocalStorageService _localStorage = LocalStorageService();
   final TextEditingController _notesController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
-  File? _image1;
-  File? _image2;
+  XFile? _image1;
+  XFile? _image2;
   bool _isSubmitting = false;
 
   // Khidmat options
@@ -899,9 +900,9 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
       if (pickedFile != null) {
         setState(() {
           if (imageNumber == 1) {
-            _image1 = File(pickedFile.path);
+            _image1 = pickedFile;
           } else {
-            _image2 = File(pickedFile.path);
+            _image2 = pickedFile;
           }
         });
       }
@@ -1065,15 +1066,17 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
 
       // Add images if available
       if (_image1 != null) {
-        request.files.add(await http.MultipartFile.fromPath(
+        request.files.add(http.MultipartFile.fromBytes(
           'Image1',
-          _image1!.path,
+          await _image1!.readAsBytes(),
+          filename: _image1!.name,
         ));
       }
       if (_image2 != null) {
-        request.files.add(await http.MultipartFile.fromPath(
+        request.files.add(http.MultipartFile.fromBytes(
           'Image2',
-          _image2!.path,
+          await _image2!.readAsBytes(),
+          filename: _image2!.name,
         ));
       }
 
@@ -1403,7 +1406,7 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
     );
   }
 
-  Widget _buildImagePicker(int imageNumber, File? image) {
+  Widget _buildImagePicker(int imageNumber, XFile? image) {
     return GestureDetector(
       onTap: () => _showImageSourceDialog(imageNumber),
       child: Container(
@@ -1422,10 +1425,9 @@ class _MiqaatReportBottomSheetState extends State<MiqaatReportBottomSheet> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(11),
-                    child: Image.file(
-                      image,
-                      fit: BoxFit.cover,
-                    ),
+                    child: kIsWeb
+                        ? Image.network(image.path, fit: BoxFit.cover)
+                        : Image.file(File(image.path), fit: BoxFit.cover),
                   ),
                   Positioned(
                     top: 4,
