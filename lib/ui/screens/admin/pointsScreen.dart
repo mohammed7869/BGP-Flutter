@@ -60,7 +60,7 @@ class _PointsScreenState extends State<PointsScreen>
       }
 
       final user = await _localStorage.getUserData();
-      _isCaptain = user?.roles == 2;
+      _isCaptain = (user?.roles == 2 || user?.roles == 6);
       _currentUserId = user?.id;
 
       final url =

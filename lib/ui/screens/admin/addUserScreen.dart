@@ -144,7 +144,7 @@ class _AddUserScreenState extends State<AddUserScreen>
 
     try {
       final userData = await _localStorage.getUserData();
-      _isCaptain = userData?.roles == 2;
+      _isCaptain = (userData?.roles == 2 || userData?.roles == 6);
       _captainJamiyat = userData?.jamiyat;
       _captainJamaat = userData?.jamaat;
 
@@ -193,7 +193,7 @@ class _AddUserScreenState extends State<AddUserScreen>
 
       if (mounted) {
         final userData = await _localStorage.getUserData();
-        final isCaptain = userData?.roles == 2;
+        final isCaptain = (userData?.roles == 2 || userData?.roles == 6);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -38,7 +38,7 @@ class _QardanListScreenState extends State<QardanListScreen> {
     final user = await _localStorage.getUserData();
     if (user != null) {
       setState(() {
-        _isCaptain = user.roles == 2;
+        _isCaptain = (user.roles == 2 || user.roles == 6);
         _currentUserId = user.id;
       });
     }

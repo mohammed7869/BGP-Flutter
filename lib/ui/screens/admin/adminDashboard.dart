@@ -109,7 +109,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     try {
       final userData = await _localStorage.getUserData();
       if (userData == null) return;
-      final isCaptain = userData.roles == 2;
+      final isCaptain = (userData.roles == 2 || userData.roles == 6);
       setState(() => _isCaptain = isCaptain);
 
       if (isCaptain) {
@@ -147,7 +147,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         // Captains: show miqaats of their own jamaat from all miqaats
         // Members: show assigned miqaats, filtered to their jamaat for safety
         List<Miqaat> miqaats;
-        if (userData.roles == 2) {
+        if ((userData.roles == 2 || userData.roles == 6)) {
           miqaats = await _miqaatService.getAllMiqaats();
         } else {
           miqaats = await _miqaatService.getMemberMiqaats(userData.id);
@@ -888,7 +888,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 child: FutureBuilder(
                     future: _localStorage.getUserData(),
                     builder: (context, snapshot) {
-                      final isCaptain = snapshot.data?.roles == 2;
+                      final isCaptain = (snapshot.data?.roles == 2 || snapshot.data?.roles == 6);
 
                       String buttonText = isCaptain
                           ? 'View Members List'
@@ -906,7 +906,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             : () async {
                                 final userData = snapshot.data ??
                                     await _localStorage.getUserData();
-                                final isCaptainTap = userData?.roles == 2;
+                                final isCaptainTap = (userData?.roles == 2 || userData?.roles == 6);
 
                                 if (isCaptainTap) {
                                   Navigator.push(
@@ -959,7 +959,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         }
 
         final userData = snapshot.data;
-        final isCaptain = userData?.roles == 2;
+        final isCaptain = (userData?.roles == 2 || userData?.roles == 6);
 
         // Only show status icon for captains, not for members
         if (!isCaptain) {

@@ -15,8 +15,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.burhaniguards.pune.app"
-    compileSdk = 35
-    buildToolsVersion = "35.0.0"
+    compileSdk = 36
+    buildToolsVersion = "36.0.0"
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -32,7 +32,7 @@ android {
     defaultConfig {
         applicationId = "com.burhaniguards.pune.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35  // Required by Google Play (min API 35)
+        targetSdk = 36  // Required by Google Play (min API 36)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true

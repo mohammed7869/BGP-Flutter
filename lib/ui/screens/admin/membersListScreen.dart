@@ -60,7 +60,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
   Future<void> _checkUserRole() async {
     final userData = await _localStorage.getUserData();
     setState(() {
-      _isCaptain = userData?.roles == 2;
+      _isCaptain = (userData?.roles == 2 || userData?.roles == 6);
       _userJamaat = userData?.jamaat;
       _isCheckingRole = false;
     });

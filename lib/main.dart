@@ -154,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
       // 4. Connect to SignalR hub for real-time notifications (foreground)
       final signalR = SignalRService();
-      await signalR.connect();
+      signalR.connect().catchError((e) => debugPrint('SignalR init error: $e'));
 
       // 5. Initialize Firebase Cloud Messaging (background/killed state)
       try {

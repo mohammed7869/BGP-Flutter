@@ -50,7 +50,7 @@ class _CreateMiqaatScreenState extends State<CreateMiqaatScreen> {
   Future<void> _checkUserRole() async {
     final userData = await _authService.getStoredUser();
     final isCaptain =
-        userData?.roles == 2 || userData?.rank.toLowerCase() == 'captain';
+        (userData?.roles == 2 || userData?.roles == 6) || userData?.rank.toLowerCase() == 'captain' || userData?.rank.toLowerCase() == 'major (captain)';
     setState(() {
       _isCaptain = isCaptain;
       _userJamiyat = userData?.jamiyat;

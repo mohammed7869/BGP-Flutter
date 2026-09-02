@@ -57,7 +57,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
     try {
       final user = await _localStorage.getUserData();
       final miqaats = await _miqaatService.getAllMiqaats();
-      final isCaptain = user != null && user.roles == 2;
+      final isCaptain = user != null && (user.roles == 2 || user.roles == 6);
 
       List<Miqaat> filtered = miqaats;
       if (user != null && user.jamaat != null) {
@@ -415,7 +415,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
         final user = await _localStorage.getUserData();
         if (user == null) return;
 
-        if (user.roles == 2 &&
+        if ((user.roles == 2 || user.roles == 6) &&
             miqaat.adminApproval.toLowerCase() == 'approved') {
           // For International miqaats, captains cannot mark attendance
           if (miqaat.isInternational || miqaat.isMultiJamaatLocal) {
@@ -437,7 +437,7 @@ class _AttendanceMiqaatScreenState extends State<AttendanceMiqaatScreen>
                   MiqaatAttendanceScreen(miqaat: miqaat),
             ),
           );
-        } else if (user.roles != 2) {
+        } else if ((user.roles != 2 && user.roles != 6)) {
           Navigator.push(
             context,
             MaterialPageRoute(

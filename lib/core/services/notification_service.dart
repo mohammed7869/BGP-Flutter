@@ -148,8 +148,7 @@ class LocalNotificationService {
       groupKey: 'bgp_${notification.type}',
       category: AndroidNotificationCategory.message,
       autoCancel: true,
-      showWhen: true,
-      when: notification.createdAt.millisecondsSinceEpoch,
+      showWhen: false,
       // Visibility on lock screen
       visibility: NotificationVisibility.public,
       // Full screen intent for heads-up display
