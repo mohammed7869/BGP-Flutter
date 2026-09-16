@@ -5,6 +5,7 @@ import 'package:burhaniguardsapp/ui/screens/admin/adminDashboard.dart';
 // import 'package:burhaniguardsapp/ui/screens/admin/attendancemiqaatScreen.dart';
 // import 'package:burhaniguardsapp/ui/screens/admin/miqaats_Screen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/hierarchyScreen.dart';
+import 'package:burhaniguardsapp/ui/screens/admin/jamaatTransfersScreen.dart';
 import 'package:burhaniguardsapp/ui/screens/common/unified_login_screen.dart';
 // import 'package:burhaniguardsapp/ui/screens/user/enrolledEvents.dart';
 import 'package:burhaniguardsapp/ui/screens/user/profileScreen.dart';
@@ -25,6 +26,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
   String? _userName;
   String? _userItsId;
   String? _userJamaat;
+  String? _userRank;
   bool _isLoading = true;
   final AuthService _authService = AuthService();
   final ScrollController _scrollController = ScrollController();
@@ -48,6 +50,7 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
       _userName = userData?.fullName ?? 'User';
       _userItsId = userData?.itsId;
       _userJamaat = userData?.jamaat;
+      _userRank = userData?.rank;
       _isLoading = false;
     });
   }
@@ -142,6 +145,20 @@ class _AdminAppDrawerState extends State<AdminAppDrawer> {
                           );
                         },
                       ),
+                      if (_userRank != null && (_userRank!.contains('Captain') || _userRank!.contains('Major')))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.transfer_within_a_station,
+                          title: 'Jamaat Transfers',
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const JamaatTransfersScreen()),
+                            );
+                          },
+                        ),
                       _buildMenuItem(
                         context,
                         icon: Icons.account_tree_rounded,

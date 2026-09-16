@@ -1,6 +1,7 @@
 import 'package:burhaniguardsapp/core/services/miqaat_service.dart';
 import 'package:burhaniguardsapp/core/services/local_storage_service.dart';
 import 'package:burhaniguardsapp/core/services/user_service.dart';
+import 'package:burhaniguardsapp/core/services/jamaat_transfer_service.dart';
 import 'package:burhaniguardsapp/core/constants/api_constants.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBarforPages.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/addUserScreen.dart';
@@ -29,6 +30,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
   String? _userJamaat;
 
   int _selectedTab = 0;
+  final Set<String> _expandedNames = {};
 
   // Brand Colors
   static const Color _brandDark = Color(0xFF461D17);
@@ -628,6 +630,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
         border: Border.all(color: _goldAccent.withOpacity(0.15)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Number badge
           Container(
@@ -672,8 +675,6 @@ class _MembersListScreenState extends State<MembersListScreen> {
                     fontWeight: FontWeight.w600,
                     color: _textDark,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 if (member.statusCategory == 'Enrolled') ...[
                   const SizedBox(height: 2),
@@ -762,9 +763,13 @@ class _MembersListScreenState extends State<MembersListScreen> {
       ageDisplay = '$age yrs';
     }
 
+    final memberId = member['id']?.toString() ?? member['Id']?.toString() ?? number.toString();
+    final isExpanded = _expandedNames.contains(memberId);
+    final isLongName = fullName.length > 30;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -777,121 +782,153 @@ class _MembersListScreenState extends State<MembersListScreen> {
         ],
         border: Border.all(color: _goldAccent.withOpacity(0.15)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Number badge
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_brandDark.withOpacity(0.1), _goldAccent.withOpacity(0.1)],
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                number.toString().padLeft(2, '0'),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: _brandDark,
+          // Top row: number + avatar + name + menu
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Number badge
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_brandDark.withOpacity(0.1), _goldAccent.withOpacity(0.1)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Profile Image
-          _buildProfileImage(profile),
-          const SizedBox(width: 12),
-
-          // Info section
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Name row
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        fullName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: _textDark,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                child: Center(
+                  child: Text(
+                    number.toString().padLeft(2, '0'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _brandDark,
                     ),
-                    if (ageDisplay.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: _goldAccent.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          ageDisplay,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _brandDark,
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                // Contact + Rank row
-                Row(
-                  children: [
-                    if (formattedContact.isNotEmpty) ...[
-                      Icon(Icons.phone_outlined,
-                          size: 12, color: _textMuted),
-                      const SizedBox(width: 4),
+              ),
+              const SizedBox(width: 10),
+              // Profile Image
+              _buildProfileImage(profile),
+              const SizedBox(width: 10),
+              // Name
+              Expanded(
+                child: GestureDetector(
+                  onTap: isLongName ? () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedNames.remove(memberId);
+                      } else {
+                        _expandedNames.add(memberId);
+                      }
+                    });
+                  } : null,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Expanded(
                         child: Text(
-                          formattedContact,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _textMuted,
-                            fontWeight: FontWeight.w500,
+                          fullName,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _textDark,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          maxLines: isExpanded ? null : 2,
+                          overflow: isExpanded ? null : TextOverflow.ellipsis,
                         ),
                       ),
-                    ],
-                    if (rank.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _brandDark.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          rank,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _brandDark.withOpacity(0.7),
+                      if (isLongName)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 2, top: 2),
+                          child: Icon(
+                            isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            size: 16,
+                            color: _brandDark.withOpacity(0.4),
                           ),
                         ),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
-                // Approval status
-                if (!isApproved) ...[
-                  const SizedBox(height: 4),
+              ),
+              // 3-dot menu
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  onPressed: () {
+                    _showJamaatMemberOptions(member);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Bottom row: chips for age, contact, rank
+          Padding(
+            padding: const EdgeInsets.only(left: 42),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (ageDisplay.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _goldAccent.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      ageDisplay,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _brandDark,
+                      ),
+                    ),
+                  ),
+                if (formattedContact.isNotEmpty)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.phone_outlined, size: 12, color: _textMuted),
+                      const SizedBox(width: 3),
+                      Text(
+                        formattedContact,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                if (rank.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _brandDark.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      rank,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _brandDark.withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                // Approval status
+                if (!isApproved)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.orange.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -905,12 +942,120 @@ class _MembersListScreenState extends State<MembersListScreen> {
                       ),
                     ),
                   ),
-                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showJamaatMemberOptions(Map<String, dynamic> member) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.transfer_within_a_station),
+                title: const Text('Transfer Member'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showTransferDialog(member);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTransferDialog(Map<String, dynamic> member) {
+    int? selectedJamaatId;
+    
+    final jamaats = [
+      {'id': 1, 'name': 'BARAMATI'},
+      {'id': 2, 'name': 'FAKHRI MOHALLA (POONA)'},
+      {'id': 3, 'name': 'ZAINI MOHALLA (POONA)'},
+      {'id': 4, 'name': 'KALIMI MOHALLA (POONA)'},
+      {'id': 5, 'name': 'AHMEDNAGAR'},
+      {'id': 6, 'name': 'IMADI MOHALLA (POONA)'},
+      {'id': 7, 'name': 'KASARWADI'},
+      {'id': 8, 'name': 'KHADKI (POONA)'},
+      {'id': 9, 'name': 'LONAVALA'},
+      {'id': 10, 'name': 'MUFADDAL MOHALLA (POONA)'},
+      {'id': 11, 'name': 'POONA'},
+      {'id': 12, 'name': 'SAIFEE MOHALLAH (POONA)'},
+      {'id': 13, 'name': 'TAIYEBI MOHALLA (POONA)'},
+      {'id': 14, 'name': 'FATEMI MOHALLA (POONA)'},
+      {'id': 15, 'name': 'ITWARA'},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Transfer Member'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Transfer ${member['fullName'] ?? member['FullName']} to another Jamaat.', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Destination Jamaat',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: selectedJamaatId,
+                    items: jamaats
+                        .where((j) => j['name'] != member['Jamaat'] && j['name'] != member['jamaat'])
+                        .map((j) => DropdownMenuItem<int>(
+                              value: j['id'] as int,
+                              child: Text(j['name'] as String, overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      setState(() => selectedJamaatId = val);
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedJamaatId != null) {
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
+                      Navigator.pop(context);
+                      try {
+                        final ts = JamaatTransferService();
+                        await ts.initiateTransfer(member['id'] ?? member['Id'], selectedJamaatId!);
+                        if (mounted) scaffoldMessenger.showSnackBar(const SnackBar(content: Text('Transfer Initiated Successfully')));
+                      } catch (e) {
+                        if (mounted) scaffoldMessenger.showSnackBar(SnackBar(content: Text(e.toString())));
+                      }
+                    }
+                  },
+                  child: const Text('Initiate Transfer'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

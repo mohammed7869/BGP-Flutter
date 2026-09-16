@@ -13,15 +13,52 @@ import 'package:burhaniguardsapp/firebase_options.dart';
 /// Top-level handler for background FCM messages.
 /// Must be a top-level function (not inside a class).
 /// This runs even when the app is completely killed.
+///
+/// If the message has a Notification payload, Android already auto-displays it
+/// so we skip manual display to avoid duplicates.
+/// If it's a data-only message, we must display it manually.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Firebase must be initialized in the background isolate
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  debugPrint('FCM Background: ${message.notification?.title}');
-  // The system automatically displays the notification on the lock screen
-  // for "notification" type messages. No manual display needed here.
+  debugPrint('FCM Background: ${message.data}');
+
+  // If the message has a Notification payload, Android already auto-displayed it.
+  // No need to show manually — this prevents duplicate notifications.
+  if (message.notification != null) {
+    debugPrint('FCM Background: System already displayed notification, skipping manual display');
+    return;
+  }
+
+  // Data-only message — must display manually via flutter_local_notifications
+  final title = message.data['title'] ?? '';
+  final body = message.data['body'] ?? '';
+
+  if (title.isEmpty && body.isEmpty) return;
+
+  final type = message.data['type'] ?? 'general';
+  final referenceId = message.data['referenceId'];
+  final imageUrl = message.data['imageUrl'];
+  final linkUrl = message.data['linkUrl'];
+
+  final localNotifications = LocalNotificationService();
+  await localNotifications.initialize();
+
+  final model = NotificationModel(
+    id: message.hashCode,
+    title: title,
+    body: body,
+    type: type,
+    referenceId: referenceId,
+    imageUrl: imageUrl,
+    linkUrl: linkUrl,
+    isRead: false,
+    createdAt: DateTime.now(),
+  );
+
+  await localNotifications.showNotification(model);
 }
 
 /// Service for Firebase Cloud Messaging integration.
@@ -101,12 +138,14 @@ class FcmService {
   /// so we use flutter_local_notifications to show it manually.
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint(
-        'FCM Foreground: ${message.notification?.title} - ${message.notification?.body}');
+        'FCM Foreground: ${message.data['title']} - ${message.data['body']}');
 
-    final notification = message.notification;
-    if (notification == null) return;
+    // Read from data payload (data-only messages have no notification field)
+    final title = message.data['title'] ?? message.notification?.title ?? '';
+    final body = message.data['body'] ?? message.notification?.body ?? '';
 
-    // Convert FCM message to our NotificationModel and show via local notifications
+    if (title.isEmpty && body.isEmpty) return;
+
     final type = message.data['type'] ?? 'general';
     final referenceId = message.data['referenceId'];
     final imageUrl = message.data['imageUrl'];
@@ -114,8 +153,8 @@ class FcmService {
 
     final model = NotificationModel(
       id: message.hashCode,
-      title: notification.title ?? '',
-      body: notification.body ?? '',
+      title: title,
+      body: body,
       type: type,
       referenceId: referenceId,
       imageUrl: imageUrl,
