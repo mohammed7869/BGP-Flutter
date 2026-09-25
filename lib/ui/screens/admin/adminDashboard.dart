@@ -228,6 +228,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
   }
 
+  String _formatShortDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final month = months[date.month - 1];
+    final day = date.day.toString().padLeft(2, '0');
+    return '$day $month ${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1188,7 +1198,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          'Day ${day.day}',
+                                          'Day ${day.day} - ${_formatShortDate(dayDate)}',
                                           style: GoogleFonts.poppins(
                                             color: Colors.white,
                                             fontSize: 11,
@@ -1452,8 +1462,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           SnackBar(
             content: Text(
               status == 'Approved'
-                  ? 'Day $dayNumber enrolled successfully'
-                  : 'Day $dayNumber rejected',
+                  ? 'Day $dayNumber - ${_formatShortDate(miqaat.fromDate.add(Duration(days: dayNumber - 1)))} enrolled successfully'
+                  : 'Day $dayNumber - ${_formatShortDate(miqaat.fromDate.add(Duration(days: dayNumber - 1)))} rejected',
             ),
             backgroundColor: status == 'Approved' ? Colors.green : Colors.red,
             duration: const Duration(seconds: 2),

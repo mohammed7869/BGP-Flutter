@@ -813,6 +813,81 @@ class MiqaatService {
     }
   }
 
+  Future<void> markAbsentBatch({
+    required int miqaatId,
+    required int day,
+    required List<int> memberIds,
+  }) async {
+    try {
+      final token = await _localStorage.getToken();
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateMemberMiqaatStatus}/$miqaatId/mark-absent');
+
+      final requestBody = {
+        'day': day,
+        'memberIds': memberIds,
+      };
+
+      final response = await http
+          .post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(requestBody),
+      )
+          .timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your network.');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Only Captains can mark absent');
+      } else {
+        String errorMessage = 'Failed to mark absent. Please try again.';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody is Map && errorBody.containsKey('message')) {
+            errorMessage = errorBody['message'] as String? ?? errorMessage;
+          } else if (errorBody is String) {
+            errorMessage = errorBody;
+          }
+        } catch (e) {
+          errorMessage =
+              response.body.isNotEmpty ? response.body : errorMessage;
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('FormatException') ||
+          errorMsg.contains('Unexpected character')) {
+        throw Exception('Invalid response from server. Please try again.');
+      } else if (errorMsg.contains('Connection') ||
+          errorMsg.contains('timeout') ||
+          errorMsg.contains('Failed host lookup') ||
+          errorMsg.contains('SocketException')) {
+        if (kDebugMode) {
+          throw Exception(
+              'Unable to connect to server. Please check:\n1. API is running\n2. Correct IP address in api_constants.dart\n3. Phone and laptop on same Wi-Fi');
+        } else {
+          throw Exception('Unable to Connect To Server');
+        }
+      }
+      rethrow;
+    }
+  }
+
   Future<MemberMiqaatAttendanceHistory> getMemberAttendanceHistory(
       int memberId) async {
     try {
@@ -1155,6 +1230,8 @@ class EnrolledMember {
   final bool? isAttended;
   final String? statusCategory;  // "Enrolled", "Pending", or "Rejected"
   final String? adminStatus;
+  final List<int>? absentDays;
+  final bool? isAbsent;  // Whether member is marked absent for the current day
 
   EnrolledMember({
     required this.id,
@@ -1169,6 +1246,8 @@ class EnrolledMember {
     this.isAttended,
     this.statusCategory,
     this.adminStatus,
+    this.absentDays,
+    this.isAbsent,
   });
 
   factory EnrolledMember.fromJson(Map<String, dynamic> json) {
@@ -1189,6 +1268,10 @@ class EnrolledMember {
       isAttended: json['isAttended'] as bool?,
       statusCategory: json['statusCategory'] as String?,
       adminStatus: json['adminStatus'] as String?,
+      absentDays: json['absentDays'] != null 
+          ? List<int>.from(json['absentDays'])
+          : null,
+      isAbsent: json['isAbsent'] as bool?,
     );
   }
 }

@@ -515,6 +515,7 @@ class _MemberMiqaatHistoryScreenState extends State<MemberMiqaatHistoryScreen> {
                       final index = entry.key;
                       final item = entry.value;
                       final isAttended = item.isAttended;
+                      final isAbsent = item.isAbsent;
 
                       return TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0.0, end: 1.0),
@@ -535,12 +536,16 @@ class _MemberMiqaatHistoryScreenState extends State<MemberMiqaatHistoryScreen> {
                           decoration: BoxDecoration(
                             color: isAttended
                                 ? const Color(0xFFF0FAF0)
-                                : Colors.white,
+                                : isAbsent
+                                    ? const Color(0xFFFFF0F0)
+                                    : Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: isAttended
                                   ? Colors.green.withOpacity(0.2)
-                                  : Colors.grey.withOpacity(0.1),
+                                  : isAbsent
+                                      ? Colors.red.withOpacity(0.2)
+                                      : Colors.grey.withOpacity(0.1),
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -651,7 +656,9 @@ class _MemberMiqaatHistoryScreenState extends State<MemberMiqaatHistoryScreen> {
                                             child: Text(
                                               isAttended
                                                   ? 'Attended'
-                                                  : 'Not Attended',
+                                                  : isAbsent
+                                                      ? 'Absent'
+                                                      : 'Not Attended',
                                               style:
                                                   GoogleFonts.poppins(
                                                 fontSize: 11,
@@ -767,6 +774,7 @@ class MemberMiqaatAttendanceItemDto {
   final int miqaatDays;
   final int miqaatDay;
   final bool isAttended;
+  final bool isAbsent;
   final int points;
 
   MemberMiqaatAttendanceItemDto({
@@ -777,6 +785,7 @@ class MemberMiqaatAttendanceItemDto {
     required this.miqaatDays,
     required this.miqaatDay,
     required this.isAttended,
+    required this.isAbsent,
     required this.points,
   });
 
@@ -789,6 +798,7 @@ class MemberMiqaatAttendanceItemDto {
       miqaatDays: (json['miqaatDays'] as num?)?.toInt() ?? 1,
       miqaatDay: (json['miqaatDay'] as num?)?.toInt() ?? 1,
       isAttended: json['isAttended'] as bool? ?? false,
+      isAbsent: json['isAbsent'] as bool? ?? false,
       points: (json['points'] as num?)?.toInt() ?? 0,
     );
   }

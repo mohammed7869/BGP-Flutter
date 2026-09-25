@@ -31,6 +31,7 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
   final Set<int> _selectedMemberIds = {};
   bool _isLoading = true;
   bool _isMarkingAttendance = false;
+  bool _isMarkingAbsent = false;
   String? _errorMessage;
   int _selectedDay = 1;
   AttendanceWindowInfo? _windowInfo;
@@ -150,6 +151,58 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
     } finally {
       setState(() {
         _isMarkingAttendance = false;
+      });
+    }
+  }
+
+  Future<void> _markAbsent() async {
+    if (_selectedMemberIds.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isMarkingAbsent = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _miqaatService.markAbsentBatch(
+        miqaatId: widget.miqaat.id,
+        day: _selectedDay,
+        memberIds: _selectedMemberIds.toList(),
+      );
+
+      // Refresh the list to update attendance status
+      await _loadMembers();
+
+      // Clear selection after successful marking
+      setState(() {
+        _selectedMemberIds.clear();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Marked as absent successfully'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errorMessage ?? 'Failed to mark absent'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isMarkingAbsent = false;
       });
     }
   }
@@ -554,37 +607,74 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
       ),
       child: SafeArea(
         child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isMarkingAttendance ? null : _markAttendance,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: widget.miqaat.isInternational
-                  ? const Color(0xFFB8860B)
-                  : AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              elevation: 4,
-            ),
-            child: _isMarkingAttendance
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.white),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _isMarkingAbsent ? null : _markAbsent,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  )
-                : Text(
-                    'Mark Attended',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                    elevation: 4,
                   ),
+                  child: _isMarkingAbsent
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'Mark Absent',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _isMarkingAttendance ? null : _markAttendance,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.miqaat.isInternational
+                        ? const Color(0xFFB8860B)
+                        : AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 4,
+                  ),
+                  child: _isMarkingAttendance
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'Mark Attended',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -675,22 +765,40 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
       ),
     );
   }
-
   Widget _buildMemberCard(EnrolledMember member, bool isSelected) {
     final isAttended = member.isAttended == true;
+    final isAbsent = member.isAbsent == true;
+    
+    // Combine explicit absent days with current day if member is marked absent for current day
+    List<int> displayAbsentDays = List<int>.from(member.absentDays ?? []);
+    // If member is explicitly marked absent for the current day, include it
+    if (isAbsent && !displayAbsentDays.contains(_selectedDay)) {
+      displayAbsentDays.add(_selectedDay);
+    }
+    if (!isAttended && !isAbsent && _windowInfo != null && _windowInfo!.isExpired) {
+      if (!displayAbsentDays.contains(_selectedDay)) {
+        displayAbsentDays.add(_selectedDay);
+      }
+    }
+    displayAbsentDays.sort();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isAttended
             ? const Color(0xFFF0FAF0)
-            : Colors.white,
+            : isAbsent
+                ? const Color(0xFFFFF0F0)
+                : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isSelected
               ? AppColors.primary
               : isAttended
                   ? Colors.green.withOpacity(0.3)
-                  : Colors.grey.withOpacity(0.12),
+                  : isAbsent
+                      ? Colors.red.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.12),
           width: isSelected ? 2 : 1,
         ),
         boxShadow: [
@@ -706,7 +814,7 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
         child: Row(
           children: [
             GestureDetector(
-              onTap: isAttended ? null : () => _toggleMemberSelection(member.id),
+              onTap: (isAttended || isAbsent) ? null : () => _toggleMemberSelection(member.id),
               child: isAttended
                   ? Container(
                       width: 28,
@@ -730,32 +838,55 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                         size: 18,
                       ),
                     )
-                  : Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.primary
-                              : Colors.grey[400]!,
-                          width: 2,
-                        ),
-                        color: Colors.white,
-                      ),
-                      child: isSelected
-                          ? Center(
-                              child: Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.primary,
-                                ),
+                  : isAbsent
+                      ? Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFC62828), Color(0xFFE53935)],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
                               ),
-                            )
-                          : null,
-                    ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        )
+                      : Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.grey[400]!,
+                              width: 2,
+                            ),
+                            color: Colors.white,
+                          ),
+                          child: isSelected
+                              ? Center(
+                                  child: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -788,12 +919,32 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                       const SizedBox(height: 3),
                       Text(
                         'ITS ID: ${member.itsId}',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: Colors.grey[600],
                         ),
                       ),
                     ],
+                    if (displayAbsentDays.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.red.shade100),
+                        ),
+                        child: Text(
+                          'Absent on Day ${displayAbsentDays.join(", ")}',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+
                   ],
                 ),
               ),
@@ -816,6 +967,31 @@ class _MiqaatAttendanceScreenState extends State<MiqaatAttendanceScreen> {
                 ),
                 child: Text(
                   'Attended',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            if (isAbsent && !isAttended)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFC62828), Color(0xFFE53935)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Absent',
                   style: GoogleFonts.poppins(
                     fontSize: 11,
                     color: Colors.white,

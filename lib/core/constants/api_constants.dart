@@ -3,7 +3,7 @@ class ApiConstants {
   // Swagger UI documentation: https://bgp.baawanerp.com/SWAGGER/index.html
   static const String baseUrl = 'https://bgp.baawanerp.com'; //Live URL
   // static const String baseUrl = 'http://10.119.23.75:5000';
-  // static const String baseUrl = 'http://192.168.31.97:5000'; //Local URL
+  // static const String baseUrl = 'http://10.145.253.153:5000'; //Local URL
   // static const String baseUrl = 'http://192.168.1.5:5000'; //Local URL
   // static const String baseUrl = 'http://10.243.56.246:5000'; //Local URL
   // static const String baseUrl = 'http://192.168.71.203:5000'; //Local URL
@@ -53,4 +53,12 @@ class ApiConstants {
 
   // FCM Token Registration
   static const String registerFcmToken = '/api/1/users/fcm-token';
+
+  // API Endpoints - Jamaat Transfers
+  static const String initiateTransfer = '/api/1/jamaat-transfers';
+  static const String getPendingOutgoingTransfers = '/api/1/jamaat-transfers/pending/from';
+  static const String getPendingIncomingTransfers = '/api/1/jamaat-transfers/pending/to';
+  static const String getHistoryTransfers = '/api/1/jamaat-transfers/history/jamaat';
+  static const String acceptTransfer = '/api/1/jamaat-transfers'; // + /{id}/accept
+  static const String rejectTransfer = '/api/1/jamaat-transfers'; // + /{id}/reject
 }

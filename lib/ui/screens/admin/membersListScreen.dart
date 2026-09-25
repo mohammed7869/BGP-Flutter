@@ -6,6 +6,11 @@ import 'package:burhaniguardsapp/core/constants/api_constants.dart';
 import 'package:burhaniguardsapp/ui/widgets/adminAppBarforPages.dart';
 import 'package:burhaniguardsapp/ui/screens/admin/addUserScreen.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:excel/excel.dart' hide Border;
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class MembersListScreen extends StatefulWidget {
   final Miqaat? miqaat;
@@ -137,6 +142,138 @@ class _MembersListScreenState extends State<MembersListScreen> {
     }
   }
 
+  Future<void> _exportToExcel() async {
+    if (_jamaatMembers.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No members to export')),
+        );
+      }
+      return;
+    }
+
+    try {
+      setState(() => _isLoading = true);
+      var excel = Excel.createExcel();
+      Sheet sheetObject = excel['Members'];
+      excel.setDefaultSheet('Members');
+
+      // Styles
+      final headerStyle = CellStyle(
+        backgroundColorHex: ExcelColor.fromHexString('#1B365D'),
+        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+        verticalAlign: VerticalAlign.Center,
+      );
+
+      final rowEvenStyle = CellStyle(
+        backgroundColorHex: ExcelColor.fromHexString('#FFF3CD'),
+        horizontalAlign: HorizontalAlign.Center,
+        verticalAlign: VerticalAlign.Center,
+      );
+
+      final rowOddStyle = CellStyle(
+        backgroundColorHex: ExcelColor.fromHexString('#F8F9FA'),
+        horizontalAlign: HorizontalAlign.Center,
+        verticalAlign: VerticalAlign.Center,
+      );
+
+      final bannerStyle = CellStyle(
+        horizontalAlign: HorizontalAlign.Center,
+        verticalAlign: VerticalAlign.Center,
+        bold: true,
+        fontColorHex: ExcelColor.fromHexString('#2C3E50'),
+      );
+
+      // Set Column Widths
+      sheetObject.setColumnWidth(0, 15); // ID
+      sheetObject.setColumnWidth(1, 35); // Full Name
+      sheetObject.setColumnWidth(2, 20); // Contact
+      sheetObject.setColumnWidth(3, 10); // Age
+      sheetObject.setColumnWidth(4, 20); // Rank
+
+      // Row 1: Banner
+      final now = DateTime.now();
+      final dateStr = DateFormat('dd MMM yyyy hh:mm:ss a').format(now);
+      
+      sheetObject.merge(CellIndex.indexByString("A1"), CellIndex.indexByString("E1"));
+      var bannerCell = sheetObject.cell(CellIndex.indexByString("A1"));
+      bannerCell.value = TextCellValue('Downloaded on: $dateStr');
+      bannerCell.cellStyle = bannerStyle;
+
+      // Row 2: Empty Spacer
+      // (implicitly left empty)
+
+      // Row 3: Headers (rowIndex = 2)
+      final headers = ['ITS ID', 'Full Name', 'Contact', 'Age', 'Rank'];
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 2));
+        cell.value = TextCellValue(headers[i]);
+        cell.cellStyle = headerStyle;
+      }
+
+      // Add Data starting at Row 4 (rowIndex = 3)
+      int currentRow = 3;
+      for (var member in _jamaatMembers) {
+        final id = member['itsId']?.toString() ?? '';
+        final fullName = member['fullName'] as String? ?? member['FullName'] as String? ?? '';
+        final contact = member['contact'] as String? ?? member['Contact'] as String? ?? '';
+        final dob = member['dateOfBirth'] ?? member['DateOfBirth'] ?? member['date_of_birth'];
+        final age = member['age'] ?? member['Age'];
+        String ageDisplay = _calculateAge(dob);
+        if (ageDisplay.isEmpty && age != null) {
+          ageDisplay = '$age yrs';
+        }
+        final rank = member['rank'] as String? ?? member['Rank'] as String? ?? '';
+
+        final rowData = [id, fullName, contact, ageDisplay, rank];
+        
+        final currentStyle = currentRow % 2 == 0 ? rowEvenStyle : rowOddStyle;
+
+        for (int i = 0; i < rowData.length; i++) {
+          var cell = sheetObject.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: currentRow));
+          cell.value = TextCellValue(rowData[i]);
+          cell.cellStyle = currentStyle;
+        }
+        
+        currentRow++;
+      }
+
+      var fileBytes = excel.save();
+      if (fileBytes == null) throw Exception("Could not generate Excel file");
+
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/Jamaat_Members_Export.xlsx';
+      final file = File(path);
+      await file.writeAsBytes(fileBytes);
+
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Export successful! Choose where to save or share.'),
+            backgroundColor: Colors.green.shade600,
+          ),
+        );
+      }
+
+      await Share.shareXFiles([XFile(path)], text: 'Jamaat Members Export');
+
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export Excel: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   List<EnrolledMember> get _filteredMembers {
     switch (_selectedTab) {
       case 0:
@@ -181,6 +318,16 @@ class _MembersListScreenState extends State<MembersListScreen> {
       return '+91 ${phone.substring(2)}';
     }
     return phone;
+  }
+
+  String _formatShortDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final month = months[date.month - 1];
+    final day = date.day.toString().padLeft(2, '0');
+    return '$day $month ${date.year}';
   }
 
   @override
@@ -290,35 +437,57 @@ class _MembersListScreenState extends State<MembersListScreen> {
                         ),
                       ),
                       if (_isCaptain && widget.miqaat == null)
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AddUserScreen(),
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _exportToExcel,
+                              icon: const Icon(Icons.download, size: 16),
+                              label: const Text('Export',
+                                  style: TextStyle(fontWeight: FontWeight.w600)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: _brandDark,
+                                side: const BorderSide(color: _brandDark),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
                               ),
-                            ).then((_) {
-                              if (widget.miqaat != null) {
-                                _loadEnrolledMembers();
-                              } else {
-                                _loadJamaatMembers();
-                              }
-                            });
-                          },
-                          icon: const Icon(Icons.person_add, size: 16),
-                          label: const Text('Add',
-                              style: TextStyle(fontWeight: FontWeight.w600)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _brandDark,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
                             ),
-                            elevation: 4,
-                            shadowColor: _brandDark.withOpacity(0.3),
-                          ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AddUserScreen(),
+                                  ),
+                                ).then((_) {
+                                  if (widget.miqaat != null) {
+                                    _loadEnrolledMembers();
+                                  } else {
+                                    _loadJamaatMembers();
+                                  }
+                                });
+                              },
+                              icon: const Icon(Icons.person_add, size: 16),
+                              label: const Text('Add',
+                                  style: TextStyle(fontWeight: FontWeight.w600)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _brandDark,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 4,
+                                shadowColor: _brandDark.withOpacity(0.3),
+                              ),
+                            ),
+                          ],
                         ),
                     ],
                   ),
@@ -1288,7 +1457,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          'Day ${day.day}',
+                                          'Day ${day.day} - ${_formatShortDate(widget.miqaat!.fromDate.add(Duration(days: day.day - 1)))}',
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 11,
@@ -1485,8 +1654,8 @@ class _MembersListScreenState extends State<MembersListScreen> {
           SnackBar(
             content: Text(
               finalStatus == 'Approved'
-                  ? 'Day $dayNumber approved for ${member.fullName}'
-                  : 'Day $dayNumber rejected for ${member.fullName}',
+                  ? 'Day $dayNumber - ${_formatShortDate(widget.miqaat!.fromDate.add(Duration(days: dayNumber - 1)))} approved for ${member.fullName}'
+                  : 'Day $dayNumber - ${_formatShortDate(widget.miqaat!.fromDate.add(Duration(days: dayNumber - 1)))} rejected for ${member.fullName}',
             ),
             backgroundColor: finalStatus == 'Approved' ? Colors.green : Colors.red,
             behavior: SnackBarBehavior.floating,
