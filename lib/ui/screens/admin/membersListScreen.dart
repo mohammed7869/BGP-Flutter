@@ -11,6 +11,7 @@ import 'package:excel/excel.dart' hide Border;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:burhaniguardsapp/core/utils/download_helper.dart';
 
 class MembersListScreen extends StatefulWidget {
   final Miqaat? miqaat;
@@ -243,10 +244,7 @@ class _MembersListScreenState extends State<MembersListScreen> {
       var fileBytes = excel.save();
       if (fileBytes == null) throw Exception("Could not generate Excel file");
 
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/Jamaat_Members_Export.xlsx';
-      final file = File(path);
-      await file.writeAsBytes(fileBytes);
+      await downloadExcelFile(fileBytes, 'Jamaat_Members_Export.xlsx');
 
       setState(() => _isLoading = false);
 
@@ -258,8 +256,6 @@ class _MembersListScreenState extends State<MembersListScreen> {
           ),
         );
       }
-
-      await Share.shareXFiles([XFile(path)], text: 'Jamaat Members Export');
 
     } catch (e) {
       setState(() => _isLoading = false);
