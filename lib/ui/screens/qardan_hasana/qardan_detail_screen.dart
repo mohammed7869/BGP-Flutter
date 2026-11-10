@@ -1007,46 +1007,51 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
                         ),
                         const Spacer(),
                         // Guarantor 1 Approval Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: app.captainApproved
-                                ? AppColors.success.withOpacity(0.12)
-                                : AppColors.warning.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: app.captainApproved
-                                  ? AppColors.success.withOpacity(0.3)
-                                  : AppColors.warning.withOpacity(0.3),
+                        Builder(builder: (context) {
+                          final isG1Rejected = !app.captainApproved &&
+                              (app.rejectedGuarantorMemberIds.contains(app.captainMemberId) ||
+                               (app.rejectionReason != null && app.rejectionReason!.contains('Guarantor 1')));
+                          final g1Color = app.captainApproved
+                              ? AppColors.success
+                              : (isG1Rejected ? AppColors.error : AppColors.warning);
+                          final g1Label = app.captainApproved
+                              ? 'Approved'
+                              : (isG1Rejected ? 'Rejected' : 'Pending');
+                          final g1Icon = app.captainApproved
+                              ? Icons.check_circle
+                              : (isG1Rejected ? Icons.cancel : Icons.pending);
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: g1Color.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: g1Color.withOpacity(0.3),
+                              ),
                             ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                app.captainApproved
-                                    ? Icons.check_circle
-                                    : Icons.pending,
-                                size: 14,
-                                color: app.captainApproved
-                                    ? AppColors.success
-                                    : AppColors.warning,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                app.captainApproved ? 'Approved' : 'Pending',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: app.captainApproved
-                                      ? AppColors.success
-                                      : AppColors.warning,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  g1Icon,
+                                  size: 14,
+                                  color: g1Color,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  g1Label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: g1Color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -1150,46 +1155,51 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
                         ),
                         const Spacer(),
                         // Guarantor 2 Approval Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: app.guarantorApproved
-                                ? AppColors.success.withOpacity(0.12)
-                                : AppColors.warning.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: app.guarantorApproved
-                                  ? AppColors.success.withOpacity(0.3)
-                                  : AppColors.warning.withOpacity(0.3),
+                        Builder(builder: (context) {
+                          final isG2Rejected = !app.guarantorApproved &&
+                              (app.rejectedGuarantorMemberIds.contains(app.guarantorMemberId) ||
+                               (app.rejectionReason != null && app.rejectionReason!.contains('Guarantor 2')));
+                          final g2Color = app.guarantorApproved
+                              ? AppColors.success
+                              : (isG2Rejected ? AppColors.error : AppColors.warning);
+                          final g2Label = app.guarantorApproved
+                              ? 'Approved'
+                              : (isG2Rejected ? 'Rejected' : 'Pending');
+                          final g2Icon = app.guarantorApproved
+                              ? Icons.check_circle
+                              : (isG2Rejected ? Icons.cancel : Icons.pending);
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: g2Color.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: g2Color.withOpacity(0.3),
+                              ),
                             ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                app.guarantorApproved
-                                    ? Icons.check_circle
-                                    : Icons.pending,
-                                size: 14,
-                                color: app.guarantorApproved
-                                    ? AppColors.success
-                                    : AppColors.warning,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                app.guarantorApproved ? 'Approved' : 'Pending',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: app.guarantorApproved
-                                      ? AppColors.success
-                                      : AppColors.warning,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  g2Icon,
+                                  size: 14,
+                                  color: g2Color,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  g2Label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: g2Color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -1373,9 +1383,9 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
             const SizedBox(height: 16),
           ],
 
-          // ── EDIT BUTTON (for applicant, before any guarantor approval) ──
-          if (app.status == 'pending' && app.applicantMemberId == _currentUserId) ...[
-            if (!app.captainApproved && !app.guarantorApproved) ...[
+          // ── EDIT BUTTON (for applicant) ──
+          if (app.applicantMemberId == _currentUserId) ...[
+            if (app.canEditApplication) ...[
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -1393,9 +1403,12 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
                     }
                   },
                   icon: const Icon(Icons.edit_rounded, size: 20),
-                  label: const Text('Edit Application',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  label: Text(
+                    app.captainApproved || app.guarantorApproved || app.isRejectedByGuarantor
+                        ? 'Edit / Change Guarantor'
+                        : 'Edit Application',
+                    style:
+                        const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -1405,7 +1418,45 @@ class _QardanDetailScreenState extends State<QardanDetailScreen> {
                   ),
                 ),
               ),
-            ] else ...[
+              if (app.captainApproved || app.guarantorApproved) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.info, size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        app.captainApproved
+                            ? 'Guarantor 1 is approved. You can change Guarantor 2 or other details.'
+                            : 'Guarantor 2 is approved. You can change Guarantor 1 or other details.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else if (app.isRejectedByGuarantor) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.error, size: 14),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text(
+                        'A guarantor rejected this application. You can edit and select a new guarantor.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ] else if (app.captainApproved && app.guarantorApproved && app.status == 'pending') ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),

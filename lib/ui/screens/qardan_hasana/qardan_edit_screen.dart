@@ -54,19 +54,58 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
     try {
       _jamaatMembers = await _service.getMembersByJamaat();
 
-      // Pre-select current Guarantor 1 (stored in captain_member_id)
       final currentG1Id = widget.application.captainMemberId;
-      _selectedGuarantor1 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
-            (m) => m?.id == currentG1Id,
-            orElse: () => null,
-          );
-
-      // Pre-select current Guarantor 2
       final currentG2Id = widget.application.guarantorMemberId;
-      _selectedGuarantor2 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
-            (m) => m?.id == currentG2Id,
-            orElse: () => null,
-          );
+
+      final isG1Rejected = !widget.application.captainApproved &&
+          (widget.application.rejectedGuarantorMemberIds.contains(currentG1Id) ||
+              (widget.application.rejectionReason != null &&
+                  widget.application.rejectionReason!.contains('Guarantor 1')));
+
+      final isG2Rejected = !widget.application.guarantorApproved &&
+          (widget.application.rejectedGuarantorMemberIds.contains(currentG2Id) ||
+              (widget.application.rejectionReason != null &&
+                  widget.application.rejectionReason!.contains('Guarantor 2')));
+
+      // Pre-select Guarantor 1
+      if (widget.application.captainApproved) {
+        _selectedGuarantor1 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
+              (m) => m?.id == currentG1Id,
+              orElse: () => JamaatMember(
+                id: currentG1Id,
+                fullName: widget.application.captainName,
+                contact: widget.application.captainMobile,
+                itsId: widget.application.captainItsId ?? '',
+              ),
+            );
+      } else if (isG1Rejected) {
+        _selectedGuarantor1 = null; // Force user to pick a new one
+      } else {
+        _selectedGuarantor1 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
+              (m) => m?.id == currentG1Id,
+              orElse: () => null,
+            );
+      }
+
+      // Pre-select Guarantor 2
+      if (widget.application.guarantorApproved) {
+        _selectedGuarantor2 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
+              (m) => m?.id == currentG2Id,
+              orElse: () => JamaatMember(
+                id: currentG2Id,
+                fullName: widget.application.guarantorName,
+                contact: widget.application.guarantorMobile,
+                itsId: widget.application.guarantorItsId ?? '',
+              ),
+            );
+      } else if (isG2Rejected) {
+        _selectedGuarantor2 = null; // Force user to pick a new one
+      } else {
+        _selectedGuarantor2 = _jamaatMembers.cast<JamaatMember?>().firstWhere(
+              (m) => m?.id == currentG2Id,
+              orElse: () => null,
+            );
+      }
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -109,6 +148,30 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Guarantor 1 and Guarantor 2 cannot be the same person'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (!widget.application.captainApproved &&
+        widget.application.rejectedGuarantorMemberIds.contains(_selectedGuarantor1!.id)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Selected Guarantor 1 has already rejected this application. Please select a different member.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (!widget.application.guarantorApproved &&
+        widget.application.rejectedGuarantorMemberIds.contains(_selectedGuarantor2!.id)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Selected Guarantor 2 has already rejected this application. Please select a different member.'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -168,6 +231,41 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isG1Approved = widget.application.captainApproved;
+    final isG2Approved = widget.application.guarantorApproved;
+    final currentG1Id = widget.application.captainMemberId;
+    final currentG2Id = widget.application.guarantorMemberId;
+
+    final isG1Rejected = !isG1Approved &&
+        (widget.application.rejectedGuarantorMemberIds.contains(currentG1Id) ||
+            (widget.application.rejectionReason != null &&
+                widget.application.rejectionReason!.contains('Guarantor 1')));
+
+    final isG2Rejected = !isG2Approved &&
+        (widget.application.rejectedGuarantorMemberIds.contains(currentG2Id) ||
+            (widget.application.rejectionReason != null &&
+                widget.application.rejectionReason!.contains('Guarantor 2')));
+
+    String bannerText;
+    Color bannerColor = AppColors.info;
+    IconData bannerIcon = Icons.info_outline;
+
+    if (isG1Approved && !isG2Approved) {
+      bannerText =
+          'Guarantor 1 has already approved. You can change Guarantor 2 and update other details.';
+    } else if (isG2Approved && !isG1Approved) {
+      bannerText =
+          'Guarantor 2 has already approved. You can change Guarantor 1 and update other details.';
+    } else if (isG1Rejected || isG2Rejected) {
+      bannerColor = AppColors.error;
+      bannerIcon = Icons.error_outline;
+      bannerText =
+          'A guarantor rejected this application. Please select a different member.';
+    } else {
+      bannerText =
+          'Editing ${widget.application.applicationNo}. Changes will notify guarantors for approval.';
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -195,21 +293,25 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.info.withOpacity(0.08),
+                        color: bannerColor.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: AppColors.info.withOpacity(0.2)),
+                        border: Border.all(color: bannerColor.withOpacity(0.2)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline,
-                              color: AppColors.info, size: 20),
+                          Icon(bannerIcon, color: bannerColor, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Editing ${widget.application.applicationNo}. Changes will reset guarantor approvals.',
-                              style: const TextStyle(
-                                  fontSize: 13, color: AppColors.textSecondary),
+                              bannerText,
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: bannerColor == AppColors.error
+                                      ? AppColors.error
+                                      : AppColors.textSecondary,
+                                  fontWeight: bannerColor == AppColors.error
+                                      ? FontWeight.w500
+                                      : FontWeight.normal),
                             ),
                           ),
                         ],
@@ -316,133 +418,235 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                       },
                     ),
 
-                    // Guarantor 1 Dropdown
+                    // Guarantor 1
                     const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: AppColors.cardShadow,
+                    if (isG1Approved) ...[
+                      _buildApprovedGuarantorCard(
+                        roleLabel: 'Guarantor 1',
+                        fullName: widget.application.captainName,
+                        itsId: widget.application.captainItsId ?? '—',
+                        contact: widget.application.captainMobile ?? '—',
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
+                    ] else ...[
+                      if (isG1Rejected) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: AppColors.error.withOpacity(0.2)),
+                          ),
+                          child: Row(
                             children: [
-                              Icon(Icons.people_outline,
-                                  color: AppColors.primary, size: 20),
-                              SizedBox(width: 8),
-                              Text('Guarantor 1 *',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary)),
+                              const Icon(Icons.info_outline,
+                                  color: AppColors.error, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Guarantor 1 (${widget.application.captainName}) rejected. Please select a different member.',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: AppColors.error),
+                                ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<JamaatMember>(
-                            value: _selectedGuarantor1,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 12),
-                              hintText: 'Select Guarantor 1',
+                        ),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: AppColors.cardShadow,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.people_outline,
+                                    color: AppColors.primary, size: 20),
+                                SizedBox(width: 8),
+                                Text('Guarantor 1 *',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
+                              ],
                             ),
-                            items: _jamaatMembers.map((m) {
-                              final isDisabled = _selectedGuarantor2 != null &&
-                                  _selectedGuarantor2!.id == m.id;
-                              return DropdownMenuItem<JamaatMember>(
-                                value: m,
-                                enabled: !isDisabled,
-                                child: Text('${m.fullName} (${m.itsId})',
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<JamaatMember>(
+                              value: _selectedGuarantor1,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                hintText: 'Select Guarantor 1',
+                              ),
+                              items: _jamaatMembers.map((m) {
+                                final isOtherSelected = _selectedGuarantor2 != null &&
+                                    _selectedGuarantor2!.id == m.id;
+                                final hasRejected = widget
+                                    .application.rejectedGuarantorMemberIds
+                                    .contains(m.id);
+                                final isDisabled = isOtherSelected || hasRejected;
+
+                                String label = '${m.fullName} (${m.itsId})';
+                                if (hasRejected) {
+                                  label += ' (Rejected)';
+                                } else if (isOtherSelected) {
+                                  label += ' (Selected as G2)';
+                                }
+
+                                return DropdownMenuItem<JamaatMember>(
+                                  value: m,
+                                  enabled: !isDisabled,
+                                  child: Text(
+                                    label,
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: isDisabled
-                                          ? Colors.grey.shade400
+                                          ? (hasRejected
+                                              ? AppColors.error.withOpacity(0.5)
+                                              : Colors.grey.shade400)
                                           : null,
-                                    )),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() => _selectedGuarantor1 = value);
-                            },
-                            validator: (value) {
-                              if (value == null) {
-                                return 'Please select Guarantor 1';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() => _selectedGuarantor1 = value);
+                              },
+                              validator: (value) {
+                                if (value == null) {
+                                  return 'Please select Guarantor 1';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 12),
 
-                    // Guarantor 2 Dropdown
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: AppColors.cardShadow,
+                    // Guarantor 2
+                    if (isG2Approved) ...[
+                      _buildApprovedGuarantorCard(
+                        roleLabel: 'Guarantor 2',
+                        fullName: widget.application.guarantorName,
+                        itsId: widget.application.guarantorItsId ?? '—',
+                        contact: widget.application.guarantorMobile ?? '—',
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
+                    ] else ...[
+                      if (isG2Rejected) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: AppColors.error.withOpacity(0.2)),
+                          ),
+                          child: Row(
                             children: [
-                              Icon(Icons.people_outline,
-                                  color: AppColors.accentGold, size: 20),
-                              SizedBox(width: 8),
-                              Text('Guarantor 2 *',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary)),
+                              const Icon(Icons.info_outline,
+                                  color: AppColors.error, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Guarantor 2 (${widget.application.guarantorName}) rejected. Please select a different member.',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: AppColors.error),
+                                ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<JamaatMember>(
-                            value: _selectedGuarantor2,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 12),
-                              hintText: 'Select Guarantor 2',
+                        ),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: AppColors.cardShadow,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.people_outline,
+                                    color: AppColors.accentGold, size: 20),
+                                SizedBox(width: 8),
+                                Text('Guarantor 2 *',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
+                              ],
                             ),
-                            items: _jamaatMembers.map((m) {
-                              final isDisabled = _selectedGuarantor1 != null &&
-                                  _selectedGuarantor1!.id == m.id;
-                              return DropdownMenuItem<JamaatMember>(
-                                value: m,
-                                enabled: !isDisabled,
-                                child: Text('${m.fullName} (${m.itsId})',
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<JamaatMember>(
+                              value: _selectedGuarantor2,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                hintText: 'Select Guarantor 2',
+                              ),
+                              items: _jamaatMembers.map((m) {
+                                final isOtherSelected = _selectedGuarantor1 != null &&
+                                    _selectedGuarantor1!.id == m.id;
+                                final hasRejected = widget
+                                    .application.rejectedGuarantorMemberIds
+                                    .contains(m.id);
+                                final isDisabled = isOtherSelected || hasRejected;
+
+                                String label = '${m.fullName} (${m.itsId})';
+                                if (hasRejected) {
+                                  label += ' (Rejected)';
+                                } else if (isOtherSelected) {
+                                  label += ' (Selected as G1)';
+                                }
+
+                                return DropdownMenuItem<JamaatMember>(
+                                  value: m,
+                                  enabled: !isDisabled,
+                                  child: Text(
+                                    label,
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: isDisabled
-                                          ? Colors.grey.shade400
+                                          ? (hasRejected
+                                              ? AppColors.error.withOpacity(0.5)
+                                              : Colors.grey.shade400)
                                           : null,
-                                    )),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() => _selectedGuarantor2 = value);
-                            },
-                            validator: (value) {
-                              if (value == null) {
-                                return 'Please select Guarantor 2';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() => _selectedGuarantor2 = value);
+                              },
+                              validator: (value) {
+                                if (value == null) {
+                                  return 'Please select Guarantor 2';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 24),
 
                     // Submit Button
@@ -498,6 +702,80 @@ class _QardanEditScreenState extends State<QardanEditScreen> {
                     fontSize: 14,
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w500)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApprovedGuarantorCard({
+    required String roleLabel,
+    required String fullName,
+    required String itsId,
+    required String contact,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lock_outline, color: Colors.grey.shade600, size: 18),
+              const SizedBox(width: 8),
+              Text(roleLabel,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, size: 14, color: AppColors.success),
+                    SizedBox(width: 4),
+                    Text(
+                      'Approved',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(fullName,
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 4),
+          Text('ITS: $itsId  •  Mobile: $contact',
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          Text(
+            '$roleLabel has already approved and cannot be changed.',
+            style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                color: Colors.grey.shade600),
           ),
         ],
       ),

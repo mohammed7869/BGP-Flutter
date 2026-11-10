@@ -174,8 +174,8 @@ class _HierarchyScreenState extends State<HierarchyScreen>
       List<Map<String, dynamic>> members) {
     final grouped = <int, List<Map<String, dynamic>>>{};
     for (var m in members) {
-      final roleId = (m['roles'] as int?) ??
-          MemberRank.getRoleId(m['rank']?.toString()) ??
+      final roleId = MemberRank.getRoleId(m['rank']?.toString()) ??
+          (m['roles'] as int?) ??
           MemberRank.member;
 
       // When Member is logged in, they see only themselves at the Member rank level

@@ -39,6 +39,9 @@ class QardanHasanaApplication {
   final int? adminApprovedBy;
   final String? adminApprovedAt;
   final String? rejectionReason;
+  final List<int> rejectedGuarantorMemberIds;
+  final bool canEdit;
+  final String? editDisabledReason;
   final bool termsAccepted;
   final String createdAt;
   final String updatedAt;
@@ -84,6 +87,9 @@ class QardanHasanaApplication {
     this.adminApprovedBy,
     this.adminApprovedAt,
     this.rejectionReason,
+    this.rejectedGuarantorMemberIds = const [],
+    this.canEdit = true,
+    this.editDisabledReason,
     this.termsAccepted = true,
     required this.createdAt,
     required this.updatedAt,
@@ -131,10 +137,33 @@ class QardanHasanaApplication {
       adminApprovedBy: json['adminApprovedBy'],
       adminApprovedAt: json['adminApprovedAt'],
       rejectionReason: json['rejectionReason'],
+      rejectedGuarantorMemberIds: (json['rejectedGuarantorMemberIds'] as List<dynamic>?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
+      canEdit: json['canEdit'] ?? true,
+      editDisabledReason: json['editDisabledReason'],
       termsAccepted: json['termsAccepted'] == true || json['termsAccepted'] == 1,
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
     );
+  }
+
+  bool get isRejectedByGuarantor {
+    if (status != 'rejected') return false;
+    if (rejectionReason != null &&
+        rejectionReason!.toLowerCase().startsWith('rejected by guarantor')) {
+      return true;
+    }
+    return rejectedGuarantorMemberIds.isNotEmpty;
+  }
+
+  bool get canEditApplication {
+    if (status == 'sanctioned' || status == 'submitted_to_admin') return false;
+    if (captainApproved && guarantorApproved) return false;
+    if (status == 'pending') return true;
+    if (isRejectedByGuarantor) return true;
+    return false;
   }
 
   String get statusLabel {
