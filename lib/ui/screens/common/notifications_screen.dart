@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/notification_model.dart';
 import '../../../core/services/notification_api_service.dart';
 import '../../../core/services/notification_navigator.dart';
 import '../../../core/services/signalr_service.dart';
+import '../qardan_hasana/qardan_detail_screen.dart';
 
 /// Full-screen notification center showing all notifications grouped by date.
 /// Supports pull-to-refresh, swipe-to-dismiss, mark as read, and deep linking.
@@ -121,10 +123,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _onNotificationTap(NotificationModel notification, int index) {
     _markAsRead(notification, index);
 
-    // If there's an external link, handle it
-    if (notification.linkUrl != null && notification.linkUrl!.isNotEmpty) {
-      String payload = '${notification.type}:${notification.referenceId ?? notification.id}|linkUrl:${notification.linkUrl}';
-      NotificationNavigator.handleNotificationTap(payload);
+    // If there is an external link, ALWAYS open the popup first so the user
+    // can read the complete message and click the button at the bottom to open the link.
+    if (notification.linkUrl != null && notification.linkUrl!.trim().isNotEmpty) {
+      _showNotificationDetailsDialog(notification);
       return;
     }
 
@@ -134,80 +136,215 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return;
     }
 
+    if (notification.type == 'qardan') {
+      final appId = int.tryParse(notification.referenceId ?? '');
+      if (appId != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => QardanDetailScreen(applicationId: appId),
+          ),
+        );
+        return;
+      }
+    }
+
     String payload = '${notification.type}:${notification.referenceId ?? notification.id}';
     NotificationNavigator.handleNotificationTap(payload);
   }
 
   void _showNotificationDetailsDialog(NotificationModel notification) {
+    final theme = Theme.of(context);
+    final typeColor = _getTypeColor(notification.type);
+    final hasLink = notification.linkUrl != null && notification.linkUrl!.trim().isNotEmpty;
+
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           contentPadding: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        notification.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 420,
+              maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header with category badge, timestamp, and close button
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade200, width: 1),
                     ),
-                    InkWell(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(Icons.close, size: 20),
-                    ),
-                  ],
-                ),
-              ),
-              Flexible(
-                child: SingleChildScrollView(
+                  ),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Image (if available)
-                      if (notification.imageUrl != null && notification.imageUrl!.isNotEmpty)
-                        Image.network(
-                          notification.imageUrl!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const SizedBox(
-                              height: 150,
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          },
-                        ),
-                      // Body
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          notification.body,
-                          style: const TextStyle(fontSize: 14),
-                          textAlign: TextAlign.left,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: typeColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(_getTypeIcon(notification.type), size: 13, color: typeColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  notification.typeLabel,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: typeColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              DateFormat('dd MMM yyyy, hh:mm a').format(notification.createdAt),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => Navigator.of(dialogContext).pop(),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Icon(Icons.close, size: 20, color: Colors.grey.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Full Title (no maxLines limitation, wraps completely)
+                      Text(
+                        notification.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.black87,
+                          height: 1.3,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+
+                // Scrollable Body (image + complete message without truncation)
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image (if available)
+                        if (notification.imageUrl != null && notification.imageUrl!.isNotEmpty) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              notification.imageUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const SizedBox(
+                                  height: 150,
+                                  child: Center(child: CircularProgressIndicator()),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        // Full message body (SelectableText so users can read & copy if needed)
+                        SelectableText(
+                          notification.body,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            height: 1.5,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.left,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Bottom Action Button: Open Link (if available)
+                if (hasLink)
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200, width: 1),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 1,
+                        ),
+                        onPressed: () async {
+                          final link = notification.linkUrl!.trim();
+                          try {
+                            final uri = Uri.parse(link);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } else {
+                              if (dialogContext.mounted) {
+                                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                  SnackBar(content: Text('Could not open link: $link')),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint('Error launching url: $e');
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                const SnackBar(content: Text('Invalid link format')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text(
+                          'Open Link',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -456,7 +593,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             Icon(Icons.link, size: 14, color: theme.colorScheme.primary),
                             const SizedBox(width: 4),
                             Text(
-                              'Tap to open link',
+                              'Tap to view message & link',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: theme.colorScheme.primary,
